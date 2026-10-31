@@ -1,0 +1,40 @@
+name: ReviewDesk release
+
+# Builds the macOS app and attaches it to a GitHub release, which is where the
+# download page links to. Push a tag such as reviewdesk-v1.0.0 to run it.
+on:
+  push:
+    tags:
+      - 'reviewdesk-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    # Apple Silicon, which is what the app is built for.
+    runs-on: macos-14
+    timeout-minutes: 45
+    env:
+      # Not 'production': that channel would need Apple signing, and would make
+      # the app update itself to the official GitHub Desktop.
+      RELEASE_CHANNEL: development
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: yarn
+      - run: yarn
+      - run: yarn build:prod
+      - run: yarn package
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/ReviewDesk-arm64.zip \
+            --title "ReviewDesk ${GITHUB_REF_NAME#reviewdesk-v}" \
+            --notes "macOS, Apple Silicon. See the download page for how to install it."

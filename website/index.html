@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReviewDesk</title>
+    <meta
+      name="description"
+      content="커밋과 브랜치를 AI로 리뷰하는 데스크톱 Git 클라이언트"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --text: #1f2328;
+        --muted: #59636e;
+        --background: #ffffff;
+        --surface: #f6f8fa;
+        --border: #d1d9e0;
+        --accent: #534ab7;
+        --on-accent: #ffffff;
+        --warning-background: #fff8e6;
+        --warning-border: #e5c76b;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --text: #e6edf3;
+          --muted: #9198a1;
+          --background: #0d1117;
+          --surface: #161b22;
+          --border: #30363d;
+          --accent: #7f77dd;
+          --on-accent: #0d1117;
+          --warning-background: #2b2411;
+          --warning-border: #6b5a1e;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--text);
+        font: 16px/1.7 -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+          'Segoe UI', 'Malgun Gothic', sans-serif;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 64px 24px;
+      }
+      header {
+        text-align: center;
+        margin-bottom: 48px;
+      }
+      .icon {
+        width: 112px;
+        height: 112px;
+      }
+      h1 {
+        margin: 16px 0 8px;
+        font-size: 40px;
+        line-height: 1.2;
+      }
+      h2 {
+        margin: 48px 0 12px;
+        font-size: 20px;
+      }
+      p {
+        margin: 0 0 12px;
+      }
+      .lead {
+        color: var(--muted);
+        font-size: 18px;
+      }
+      .download {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 12px 28px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .download:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .requirement {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      ul,
+      ol {
+        margin: 0 0 12px;
+        padding-left: 22px;
+      }
+      li {
+        margin-bottom: 6px;
+      }
+      a {
+        color: var(--accent);
+      }
+      code {
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: var(--surface);
+        font: 14px ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      pre {
+        margin: 8px 0 12px;
+        padding: 12px 16px;
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+      pre code {
+        padding: 0;
+      }
+      .note {
+        margin: 12px 0;
+        padding: 12px 16px;
+        border: 1px solid var(--warning-border);
+        border-radius: 8px;
+        background: var(--warning-background);
+      }
+      footer {
+        margin-top: 64px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <svg class="icon" viewBox="0 0 1024 1024" role="img" aria-label="ReviewDesk 아이콘">
+          <rect x="60" y="60" width="904" height="904" rx="200" fill="#26215C" />
+          <path d="M290 262V772" stroke="#AFA9EC" stroke-width="56" stroke-linecap="round" fill="none" />
+          <path d="M290 590C290 430 470 480 470 322" stroke="#AFA9EC" stroke-width="56" stroke-linecap="round" fill="none" />
+          <circle cx="290" cy="262" r="66" fill="#EEEDFE" />
+          <circle cx="290" cy="772" r="66" fill="#EEEDFE" />
+          <circle cx="470" cy="322" r="66" fill="#EEEDFE" />
+          <circle cx="580" cy="570" r="178" fill="#26215C" stroke="#5DCAA5" stroke-width="66" />
+          <path d="M494 572L556 634L668 512" stroke="#5DCAA5" stroke-width="50" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          <path d="M720 712L836 828" stroke="#5DCAA5" stroke-width="88" stroke-linecap="round" fill="none" />
+        </svg>
+        <h1>ReviewDesk</h1>
+        <p class="lead">커밋과 브랜치를 AI로 리뷰하는 데스크톱 Git 클라이언트</p>
+        <a
+          class="download"
+          href="https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip"
+          >macOS용 다운로드</a
+        >
+        <p class="requirement">Apple Silicon Mac 전용 · 약 530MB</p>
+      </header>
+
+      <h2>할 수 있는 일</h2>
+      <ul>
+        <li>선택한 커밋이나 현재 브랜치의 변경사항을 AI로 리뷰</li>
+        <li>지난 리뷰를 커밋, 메시지, 브랜치로 검색해서 다시 보기</li>
+        <li>프로젝트별로 에이전트, 모델, 리뷰 프롬프트 설정</li>
+        <li>커밋 목록에서 브랜치가 갈라지고 합쳐지는 흐름을 그래프로 확인</li>
+      </ul>
+
+      <h2>설치</h2>
+      <ol>
+        <li>다운로드한 zip의 압축을 풉니다.</li>
+        <li><code>ReviewDesk.app</code>을 응용 프로그램 폴더로 옮깁니다.</li>
+        <li>응용 프로그램 폴더에서 실행합니다.</li>
+      </ol>
+      <p class="note">
+        실행 중에는 앱을 옮기지 마세요. 옮기면 Git을 찾지 못해 동작하지 않습니다.
+        옮겼다면 앱을 완전히 종료하고 다시 실행하세요.
+      </p>
+
+      <h2>"확인되지 않은 개발자" 경고가 나올 때</h2>
+      <p>
+        이 앱은 Apple 공증을 받지 않아서 처음 실행할 때 macOS가 막을 수 있습니다.
+        출처를 신뢰하신다면 시스템 설정 → 개인정보 보호 및 보안에서
+        <strong>그래도 열기</strong>를 누르거나, 터미널에서 아래 명령을 실행한 뒤 다시 여세요.
+      </p>
+      <pre><code>xattr -dr com.apple.quarantine /Applications/ReviewDesk.app</code></pre>
+
+      <h2>AI 리뷰를 쓰려면</h2>
+      <p>
+        ReviewDesk는 컴퓨터에 설치된 에이전트 CLI를 실행합니다. API 키는 필요 없고,
+        <a href="https://claude.com/claude-code">Claude Code</a>를 설치하고 터미널에서
+        로그인해 두면 됩니다. 리뷰할 커밋 로그와 diff는 그 에이전트의 서비스로 전송됩니다.
+      </p>
+
+      <footer>
+        <p>
+          ReviewDesk는 <a href="https://github.com/desktop/desktop">GitHub Desktop</a>을
+          기반으로 한 개인 포크이며, GitHub의 공식 제품이 아닙니다. GitHub은 이 앱을
+          보증하거나 지원하지 않습니다. 앱 안에는 GitHub Desktop 문구가 남아 있습니다.
+        </p>
+        <p>
+          MIT 라이선스 ·
+          <a href="https://github.com/tom-kwak/desktop-with-ai">소스 코드</a> ·
+          <a href="https://github.com/tom-kwak/desktop-with-ai/releases">모든 릴리스</a>
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>
