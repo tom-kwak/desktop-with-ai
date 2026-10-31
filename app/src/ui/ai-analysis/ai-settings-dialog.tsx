@@ -5,17 +5,19 @@ import { Select } from '../lib/select'
 import { TextBox } from '../lib/text-box'
 import { TextArea } from '../lib/text-area'
 import { Button } from '../lib/button'
+import { LinkButton } from '../lib/link-button'
 import { Checkbox, CheckboxValue } from '../lib/checkbox'
 import { Repository } from '../../models/repository'
 import {
   AIAgentId,
   AIAgents,
-  DefaultAIAnalysisSettings,
   DefaultReviewPrompt,
   DefaultReviewPromptId,
   IAIAnalysisSettings,
   IReviewPrompt,
   getAIAgent,
+  getDefaultSettingsResetTo,
+  getProjectSettingsResetTo,
   getReviewPrompts,
   loadGlobalAIAnalysisSettings,
   loadProjectAIAnalysisSettings,
@@ -48,10 +50,13 @@ export class AISettingsDialog extends React.Component<
 > {
   public constructor(props: IAISettingsDialogProps) {
     super(props)
+    const project = loadProjectAIAnalysisSettings(props.repository)
     this.state = {
-      scope: 'project',
+      // Without settings of its own a project just uses the defaults, so
+      // those are what there is to edit.
+      scope: project !== null ? 'project' : 'global',
       global: loadGlobalAIAnalysisSettings(),
-      project: loadProjectAIAnalysisSettings(props.repository),
+      project,
     }
   }
 
@@ -149,11 +154,16 @@ export class AISettingsDialog extends React.Component<
   }
 
   private onResetToDefaults = () => {
-    // Keep the user's custom prompts; only restore the selections.
-    this.update({
-      ...DefaultAIAnalysisSettings,
-      customPrompts: this.shown.customPrompts,
-    })
+    const { scope, global } = this.state
+    this.update(
+      scope === 'project'
+        ? getProjectSettingsResetTo(global, this.shown)
+        : getDefaultSettingsResetTo(this.shown)
+    )
+  }
+
+  private onEditDefaults = () => {
+    this.setState({ scope: 'global' })
   }
 
   private onSubmit = () => {
@@ -176,7 +186,7 @@ export class AISettingsDialog extends React.Component<
           <option value="project">
             This project ({this.props.repository.name})
           </option>
-          <option value="global">All projects (default)</option>
+          <option value="global">Defaults for all projects</option>
         </Select>
         {scope === 'project' && (
           <Checkbox
@@ -187,7 +197,8 @@ export class AISettingsDialog extends React.Component<
         )}
         {scope === 'project' && project === null && (
           <p className="ai-settings-help">
-            This project uses the settings for all projects, shown below.
+            This project uses the defaults for all projects, shown below.{' '}
+            <LinkButton onClick={this.onEditDefaults}>Edit defaults</LinkButton>
           </p>
         )}
       </>
@@ -324,7 +335,9 @@ export class AISettingsDialog extends React.Component<
               onClick={this.onResetToDefaults}
               disabled={!this.isEditable}
             >
-              Reset to defaults
+              {this.state.scope === 'project'
+                ? 'Reset to defaults'
+                : 'Reset to built-in defaults'}
             </Button>
           </div>
         </DialogContent>

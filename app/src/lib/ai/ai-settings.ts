@@ -197,6 +197,38 @@ export function loadEffectiveAIAnalysisSettings(
     : { settings: loadGlobalAIAnalysisSettings(), isProjectSpecific: false }
 }
 
+/**
+ * What the defaults go back to: the built-in settings, keeping the custom
+ * prompts the user wrote.
+ */
+export function getDefaultSettingsResetTo(
+  settings: IAIAnalysisSettings
+): IAIAnalysisSettings {
+  return {
+    ...DefaultAIAnalysisSettings,
+    customPrompts: settings.customPrompts,
+  }
+}
+
+/**
+ * What a project goes back to: the user's saved defaults, keeping the custom
+ * prompts written for the project. The defaults' prompts come along since the
+ * selected one may be among them.
+ */
+export function getProjectSettingsResetTo(
+  defaults: IAIAnalysisSettings,
+  project: IAIAnalysisSettings
+): IAIAnalysisSettings {
+  const inDefaults = new Set(defaults.customPrompts.map(p => p.id))
+  return {
+    ...defaults,
+    customPrompts: [
+      ...defaults.customPrompts,
+      ...project.customPrompts.filter(p => !inDefaults.has(p.id)),
+    ],
+  }
+}
+
 /** All selectable prompts, built-in first. */
 export function getReviewPrompts(
   settings: IAIAnalysisSettings
