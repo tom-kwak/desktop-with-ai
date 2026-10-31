@@ -1,4 +1,6 @@
 import { createHash } from 'crypto'
+import { stat } from 'fs/promises'
+import { join } from 'path'
 import { Repository } from '../../models/repository'
 import { Commit } from '../../models/commit'
 import { IAIAnalysisInput, IReviewedCommit } from '../ai/ai-analysis'
@@ -197,9 +199,12 @@ export async function getBranchAnalysisInput(
 
 /**
  * Fingerprint of the repository's files: the checked-out commit, the changes
- * to tracked files and the names of untracked files. Reviews that may read
- * the repository are only reused while this stays the same. The contents of
- * untracked files are not part of it.
+ * to tracked files and the untracked files. Reviews that may read the
+ * repository are only reused while this stays the same.
+ *
+ * Untracked files are compared by size and modification time rather than by
+ * content, which keeps this fast however large they are. Ignored files aren't
+ * part of it.
  */
 export async function getRepositoryStateKey(
   repository: Repository
@@ -216,7 +221,22 @@ export async function getRepositoryStateKey(
     run(['ls-files', '--others', '--exclude-standard', '-z']),
   ])
 
+  const untrackedFiles = await Promise.all(
+    untracked.stdout
+      .split('\0')
+      .filter(path => path !== '')
+      .map(async path => {
+        try {
+          const { size, mtimeMs } = await stat(join(repository.path, path))
+          return [path, size, mtimeMs]
+        } catch {
+          // Removed since it was listed.
+          return [path]
+        }
+      })
+  )
+
   return createHash('sha256')
-    .update(JSON.stringify([head.stdout, changes.stdout, untracked.stdout]))
+    .update(JSON.stringify([head.stdout, changes.stdout, untrackedFiles]))
     .digest('hex')
 }

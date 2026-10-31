@@ -236,8 +236,13 @@ async function trim(
 
   const excess = (await ofRepository().count()) - limits.maxReviewsPerRepository
   if (excess > 0) {
+    // One extra, since the review being saved isn't always the newest: the
+    // clock can go backwards.
+    const oldest = await ofRepository()
+      .limit(excess + 1)
+      .primaryKeys()
     await db.reviews.bulkDelete(
-      await ofRepository().limit(excess).primaryKeys()
+      oldest.filter(id => id !== keepId).slice(0, excess)
     )
   }
 

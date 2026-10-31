@@ -1,4 +1,4 @@
-import { beforeEach, describe, it } from 'node:test'
+import { beforeEach, describe, it, mock } from 'node:test'
 import assert from 'node:assert'
 import { AIReviewDatabase } from '../../../src/lib/ai/ai-review-database'
 import {
@@ -117,6 +117,24 @@ describe('ai review history', () => {
     assert.strictEqual(saved, true)
     assert.strictEqual((await loadAllReviewHistory(other, db)).length, 0)
     assert.strictEqual((await loadAllReviewHistory(repository, db)).length, 1)
+  })
+
+  it('keeps the review being saved when the clock went back', async () => {
+    const small = { ...limits, maxReviewsPerRepository: 1 }
+    await save(db, 'newer', repository, small)
+
+    const now = mock.method(Date, 'now', () => 1000)
+    try {
+      await save(db, 'older', repository, small)
+    } finally {
+      now.mock.restore()
+    }
+
+    const reviews = await loadAllReviewHistory(repository, db)
+    assert.deepStrictEqual(
+      reviews.map(r => r.text),
+      ['older']
+    )
   })
 
   it('never drops the review being saved', async () => {
