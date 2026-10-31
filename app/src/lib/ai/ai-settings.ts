@@ -15,8 +15,13 @@ export interface IAIAgent {
   /**
    * Arguments for a read-only, non-interactive run that reads the prompt
    * from stdin. `model` is empty when the CLI's own default should be used.
+   * With `repositoryAccess` the agent runs inside the repository and may read
+   * its files, but still can't change anything or run commands.
    */
-  readonly buildArgs: (model: string) => ReadonlyArray<string>
+  readonly buildArgs: (
+    model: string,
+    repositoryAccess: boolean
+  ) => ReadonlyArray<string>
 }
 
 export const AIAgents: ReadonlyArray<IAIAgent> = [
@@ -25,14 +30,19 @@ export const AIAgents: ReadonlyArray<IAIAgent> = [
     label: 'Claude Code',
     command: 'claude',
     suggestedModels: ['sonnet', 'opus', 'haiku'],
-    buildArgs: model => [
+    buildArgs: (model, repositoryAccess) => [
       '-p',
       '--output-format',
       'text',
+      // Only read-only tools; no shell and no edits.
       '--tools',
-      '',
+      repositoryAccess ? 'Read,Grep,Glob' : '',
       '--no-session-persistence',
       '--disable-slash-commands',
+      // A repository can ship its own hooks and MCP servers. Don't let
+      // reviewing it run them.
+      ...(repositoryAccess ? ['--setting-sources', 'user'] : []),
+      ...(repositoryAccess ? ['--strict-mcp-config'] : []),
       ...(model === '' ? [] : ['--model', model]),
     ],
   },
@@ -104,6 +114,11 @@ export interface IAIAnalysisSettings {
   readonly promptId: string
   /** Review prompts created by the user. */
   readonly customPrompts: ReadonlyArray<IReviewPrompt>
+  /**
+   * Whether the agent may read the repository's files, not just the diff, to
+   * understand the code around a change.
+   */
+  readonly repositoryAccess: boolean
 }
 
 export const DefaultAIAnalysisSettings: IAIAnalysisSettings = {
@@ -111,6 +126,7 @@ export const DefaultAIAnalysisSettings: IAIAnalysisSettings = {
   models: {},
   promptId: DefaultReviewPromptId,
   customPrompts: [],
+  repositoryAccess: false,
 }
 
 const ProjectStorageKeyPrefix = `${StorageKey}:project:`
@@ -222,5 +238,6 @@ function sanitize(raw: Record<string, unknown>): IAIAnalysisSettings {
     promptId:
       typeof raw.promptId === 'string' ? raw.promptId : DefaultReviewPromptId,
     customPrompts,
+    repositoryAccess: raw.repositoryAccess === true,
   }
 }

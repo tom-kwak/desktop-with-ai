@@ -64,6 +64,7 @@ export class AIAnalysisDialog extends React.Component<
       const text = await analyzeWithAgent(
         input,
         this.effective.settings,
+        this.props.repository.path,
         signal
       )
       if (!signal.aborted) {
@@ -84,6 +85,7 @@ export class AIAnalysisDialog extends React.Component<
       <p className="ai-analysis-meta">
         {getAIAgent(settings.agent).label} · {model || 'default model'} ·
         prompt: {getSelectedReviewPrompt(settings).name} ·{' '}
+        {settings.repositoryAccess ? 'reads repository · ' : ''}
         {isProjectSpecific ? 'project settings' : 'global settings'}
       </p>
     )

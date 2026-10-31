@@ -140,6 +140,10 @@ export class AISettingsDialog extends React.Component<
     })
   }
 
+  private onRepositoryAccessChanged = (e: React.FormEvent<HTMLInputElement>) => {
+    this.update({ repositoryAccess: e.currentTarget.checked })
+  }
+
   private onResetToDefaults = () => {
     // Keep the user's custom prompts; only restore the selections.
     this.update({
@@ -176,6 +180,28 @@ export class AISettingsDialog extends React.Component<
             This project uses the settings for all projects, shown below.
           </p>
         )}
+      </>
+    )
+  }
+
+  private renderRepositoryAccess() {
+    return (
+      <>
+        <Checkbox
+          label="Let the agent read files in the repository"
+          value={
+            this.shown.repositoryAccess ? CheckboxValue.On : CheckboxValue.Off
+          }
+          disabled={!this.isEditable}
+          onChange={this.onRepositoryAccessChanged}
+          ariaDescribedBy="ai-repository-access-help"
+        />
+        <p id="ai-repository-access-help" className="ai-settings-help">
+          Besides the diff, the agent can look at other files, such as callers
+          and tests. It cannot change files or run commands. Anything it reads
+          is sent to the agent, so leave this off for repositories with secrets
+          you don't want shared. Reviews take longer.
+        </p>
       </>
     )
   }
@@ -281,6 +307,7 @@ export class AISettingsDialog extends React.Component<
             ))}
           </Select>
           {this.renderModel()}
+          {this.renderRepositoryAccess()}
           {this.renderPrompt()}
           <div className="ai-settings-prompt-actions">
             <Button
