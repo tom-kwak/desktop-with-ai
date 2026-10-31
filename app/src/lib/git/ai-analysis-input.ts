@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { Repository } from '../../models/repository'
 import { Commit } from '../../models/commit'
 import { IAIAnalysisInput } from '../ai/ai-analysis'
@@ -174,4 +175,30 @@ export async function getBranchAnalysisInput(
       : `(no commits ahead of ${baseRef})`
 
   return { log, diff: sections.join('\n') }
+}
+
+/**
+ * Fingerprint of the repository's files: the checked-out commit, the changes
+ * to tracked files and the names of untracked files. Reviews that may read
+ * the repository are only reused while this stays the same. The contents of
+ * untracked files are not part of it.
+ */
+export async function getRepositoryStateKey(
+  repository: Repository
+): Promise<string> {
+  // An unborn HEAD makes some of these fail; that just means nothing to hash.
+  const run = (args: string[]) =>
+    git(args, repository.path, 'getRepositoryStateKey', {
+      successExitCodes: new Set([0, 1, 128]),
+    })
+
+  const [head, changes, untracked] = await Promise.all([
+    run(['rev-parse', '--verify', '--quiet', 'HEAD']),
+    run(['diff', '--no-ext-diff', '--no-color', 'HEAD', '--']),
+    run(['ls-files', '--others', '--exclude-standard', '-z']),
+  ])
+
+  return createHash('sha256')
+    .update(JSON.stringify([head.stdout, changes.stdout, untracked.stdout]))
+    .digest('hex')
 }

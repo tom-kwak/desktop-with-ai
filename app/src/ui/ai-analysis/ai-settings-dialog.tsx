@@ -51,7 +51,7 @@ export class AISettingsDialog extends React.Component<
     this.state = {
       scope: 'project',
       global: loadGlobalAIAnalysisSettings(),
-      project: loadProjectAIAnalysisSettings(props.repository.path),
+      project: loadProjectAIAnalysisSettings(props.repository),
     }
   }
 
@@ -159,7 +159,7 @@ export class AISettingsDialog extends React.Component<
   private onSubmit = () => {
     const { global, project } = this.state
     saveGlobalAIAnalysisSettings(global)
-    saveProjectAIAnalysisSettings(this.props.repository.path, project)
+    saveProjectAIAnalysisSettings(this.props.repository, project)
     this.props.onDismissed()
   }
 

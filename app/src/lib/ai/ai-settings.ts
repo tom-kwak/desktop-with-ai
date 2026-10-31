@@ -1,4 +1,5 @@
 import { isRecord } from '../is-record'
+import { StoredRepository, getRepositoryStorageKeys } from './repository-key'
 
 const StorageKey = 'ai-analysis-settings'
 
@@ -151,21 +152,32 @@ export function saveGlobalAIAnalysisSettings(settings: IAIAnalysisSettings) {
 
 /** Settings stored for one project, or null if it uses the global ones. */
 export function loadProjectAIAnalysisSettings(
-  repositoryPath: string
+  repository: StoredRepository
 ): IAIAnalysisSettings | null {
-  return readSettings(`${ProjectStorageKeyPrefix}${repositoryPath}`)
+  const { current, legacy } = getRepositoryStorageKeys(repository)
+  return (
+    readSettings(`${ProjectStorageKeyPrefix}${current}`) ??
+    readSettings(`${ProjectStorageKeyPrefix}${legacy}`)
+  )
 }
 
 /** Stores project settings; null removes them so the global ones apply. */
 export function saveProjectAIAnalysisSettings(
-  repositoryPath: string,
+  repository: StoredRepository,
   settings: IAIAnalysisSettings | null
 ) {
-  const key = `${ProjectStorageKeyPrefix}${repositoryPath}`
+  const { current, legacy } = getRepositoryStorageKeys(repository)
   if (settings === null) {
-    localStorage.removeItem(key)
+    localStorage.removeItem(`${ProjectStorageKeyPrefix}${current}`)
   } else {
-    localStorage.setItem(key, JSON.stringify(settings))
+    localStorage.setItem(
+      `${ProjectStorageKeyPrefix}${current}`,
+      JSON.stringify(settings)
+    )
+  }
+  // Settings found under the old path key now live under the current one.
+  if (legacy !== current) {
+    localStorage.removeItem(`${ProjectStorageKeyPrefix}${legacy}`)
   }
 }
 
@@ -177,9 +189,9 @@ export interface IEffectiveAIAnalysisSettings {
 
 /** The settings to use for a project: its own if it has any, else the global ones. */
 export function loadEffectiveAIAnalysisSettings(
-  repositoryPath: string
+  repository: StoredRepository
 ): IEffectiveAIAnalysisSettings {
-  const project = loadProjectAIAnalysisSettings(repositoryPath)
+  const project = loadProjectAIAnalysisSettings(repository)
   return project !== null
     ? { settings: project, isProjectSpecific: true }
     : { settings: loadGlobalAIAnalysisSettings(), isProjectSpecific: false }

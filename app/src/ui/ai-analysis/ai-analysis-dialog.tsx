@@ -6,6 +6,7 @@ import { Loading } from '../lib/loading'
 import { Select } from '../lib/select'
 import { AIReviewMarkdown } from './ai-review-markdown'
 import { Repository } from '../../models/repository'
+import { getRepositoryStateKey } from '../../lib/git/ai-analysis-input'
 import { IAIAnalysisInput, analyzeWithAgent } from '../../lib/ai/ai-analysis'
 import {
   IReviewHistoryEntry,
@@ -45,6 +46,8 @@ interface IAIAnalysisDialogState {
   readonly selectedId: string | null
   /** Whether the review shown was loaded from history, not just run. */
   readonly isFromHistory: boolean
+  /** Whether the review just run couldn't be kept in the history. */
+  readonly isNotSaved: boolean
 }
 
 /**
@@ -60,7 +63,7 @@ export class AIAnalysisDialog extends React.Component<
   private abortController = new AbortController()
   private input: IAIAnalysisInput | null = null
   private readonly effective = loadEffectiveAIAnalysisSettings(
-    this.props.repository.path
+    this.props.repository
   )
 
   public constructor(props: IAIAnalysisDialogProps) {
@@ -70,6 +73,7 @@ export class AIAnalysisDialog extends React.Component<
       history: [],
       selectedId: null,
       isFromHistory: false,
+      isNotSaved: false,
     }
   }
 
@@ -89,6 +93,7 @@ export class AIAnalysisDialog extends React.Component<
       analysis: { kind: 'loading' },
       selectedId: null,
       isFromHistory: false,
+      isNotSaved: false,
     })
     return this.abortController.signal
   }
@@ -98,6 +103,18 @@ export class AIAnalysisDialog extends React.Component<
     return this.input
   }
 
+  /**
+   * What a saved review has to match to be reused besides the input and the
+   * settings: when the agent can read the repository, the state of its files.
+   */
+  private async getConditionKey(): Promise<string> {
+    const { settings } = this.effective
+    const repositoryState = settings.repositoryAccess
+      ? await getRepositoryStateKey(this.props.repository)
+      : null
+    return getReviewConditionKey(settings, repositoryState)
+  }
+
   /** Shows the saved review made under the same conditions, if there is one. */
   private async showSavedOrReview() {
     const { signal } = this.abortController
@@ -105,10 +122,10 @@ export class AIAnalysisDialog extends React.Component<
     try {
       const input = await this.getInput()
       const history = loadReviewHistory(
-        this.props.repository.path,
+        this.props.repository,
         getReviewInputHash(input)
       )
-      const conditionKey = getReviewConditionKey(this.effective.settings)
+      const conditionKey = await this.getConditionKey()
       const saved = history.find(e => e.conditionKey === conditionKey)
 
       if (signal.aborted) {
@@ -137,6 +154,9 @@ export class AIAnalysisDialog extends React.Component<
 
     try {
       const input = await this.getInput()
+      // Taken before the agent starts, so the review is filed under the state
+      // of the repository it was given.
+      const conditionKey = await this.getConditionKey()
       const text = await analyzeWithAgent(
         input,
         this.effective.settings,
@@ -147,17 +167,22 @@ export class AIAnalysisDialog extends React.Component<
         return
       }
 
-      const entry = saveReview(
-        this.props.repository.path,
+      const { entry, saved } = saveReview(
+        this.props.repository,
         input,
         this.effective.settings,
+        conditionKey,
         text,
         this.props.subject
       )
+      const stored = loadReviewHistory(this.props.repository, entry.inputHash)
       this.setState({
         analysis: { kind: 'done', text },
-        history: loadReviewHistory(this.props.repository.path, entry.inputHash),
+        // A review that couldn't be kept is still listed while the dialog is
+        // open, so what is shown matches the list.
+        history: saved ? stored : [entry, ...stored],
         selectedId: entry.id,
+        isNotSaved: !saved,
       })
     } catch (e) {
       this.showError(e, signal)
@@ -208,6 +233,12 @@ export class AIAnalysisDialog extends React.Component<
           {promptName} · {repositoryAccess ? 'reads repository · ' : ''}
           {isProjectSpecific ? 'project settings' : 'global settings'}
         </p>
+        {this.state.isNotSaved && (
+          <p className="ai-analysis-error">
+            This review couldn't be saved to the history because the storage is
+            full, so it won't be shown again after this dialog is closed.
+          </p>
+        )}
         {isFromHistory && entry && (
           <p className="ai-analysis-meta">
             Saved review from {new Date(entry.createdAt).toLocaleString()}. Use

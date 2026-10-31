@@ -40,7 +40,7 @@ export class AIReviewHistoryDialog extends React.Component<
   public constructor(props: IAIReviewHistoryDialogProps) {
     super(props)
 
-    const entries = loadAllReviewHistory(props.repository.path)
+    const entries = loadAllReviewHistory(props.repository)
     this.state = { entries, selectedId: entries[0]?.id ?? null }
   }
 
@@ -54,7 +54,7 @@ export class AIReviewHistoryDialog extends React.Component<
       return
     }
 
-    deleteReview(this.props.repository.path, selectedId)
+    deleteReview(this.props.repository, selectedId)
 
     // Show the review that took the deleted one's place in the list.
     const index = entries.findIndex(e => e.id === selectedId)
