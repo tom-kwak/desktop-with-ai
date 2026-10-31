@@ -6,6 +6,8 @@
 리뷰와 커밋 그래프를 더했습니다. 평소 쓰던 Git 클라이언트 안에서 변경사항을 리뷰하고,
 지난 리뷰를 다시 찾아볼 수 있습니다.
 
+**[ReviewDesk 다운로드](https://tom-kwak.github.io/desktop-with-ai/)** (macOS, Apple Silicon)
+
 > ReviewDesk는 개인 포크이며 GitHub의 공식 제품이 아닙니다. GitHub은 이 앱을 보증하거나
 > 지원하지 않습니다. 문제가 있으면 GitHub Desktop이 아니라
 > [이 저장소](https://github.com/tom-kwak/desktop-with-ai/issues)에 알려 주세요.
@@ -69,8 +71,10 @@ History 목록 왼쪽에 브랜치가 갈라지고 합쳐지는 흐름을 그립
 
 ## 설치
 
-[Releases](https://github.com/tom-kwak/desktop-with-ai/releases)에서
-`ReviewDesk-arm64.zip`을 내려받습니다. Apple Silicon Mac 전용입니다.
+[다운로드 페이지](https://tom-kwak.github.io/desktop-with-ai/)에서 내려받습니다.
+[zip 파일을 바로 받거나](https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip)
+[지난 버전](https://github.com/tom-kwak/desktop-with-ai/releases)을 찾을 수도 있습니다.
+Apple Silicon Mac 전용입니다.
 
 1. 압축을 풀고 `ReviewDesk.app`을 응용 프로그램 폴더로 옮깁니다.
 2. 응용 프로그램 폴더에서 실행합니다.
@@ -119,7 +123,8 @@ RELEASE_CHANNEL=development yarn package
 
 `reviewdesk-v1.0.0` 같은 태그를 푸시하면
 [GitHub Actions](.github/workflows/reviewdesk-release.yml)가 앱을 빌드해 Release에 올립니다.
-다운로드 페이지는 [`website/`](website/)에 있습니다.
+[다운로드 페이지](https://tom-kwak.github.io/desktop-with-ai/)의 소스는
+[`website/`](website/)에 있고, `master`에 푸시하면 자동으로 배포됩니다.
 
 ## 코드 구조
 
