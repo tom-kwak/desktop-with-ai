@@ -22,9 +22,12 @@ import {
   getSelectedReviewPrompt,
   loadGlobalAIAnalysisSettings,
   loadProjectAIAnalysisSettings,
-  saveGlobalAIAnalysisSettings,
-  saveProjectAIAnalysisSettings,
+  saveAIAnalysisSettings,
 } from '../../lib/ai/ai-settings'
+
+function getMessage(e: unknown) {
+  return e instanceof Error ? e.message : String(e)
+}
 
 interface IAISettingsDialogProps {
   readonly repository: Repository
@@ -41,8 +44,10 @@ interface IAISettingsDialogState {
   readonly project: IAIAnalysisSettings | null
   /** Whether the settings are still being read from the database. */
   readonly isLoading: boolean
-  /** Set if the settings couldn't be read or saved. */
-  readonly errorMessage: string | null
+  /** Set if the settings couldn't be read; there is nothing to edit then. */
+  readonly loadError: string | null
+  /** Set if the last save failed; the form stays so it can be tried again. */
+  readonly saveError: string | null
 }
 
 /**
@@ -62,7 +67,8 @@ export class AISettingsDialog extends React.Component<
       global: DefaultAIAnalysisSettings,
       project: null,
       isLoading: true,
-      errorMessage: null,
+      loadError: null,
+      saveError: null,
     }
   }
 
@@ -84,19 +90,14 @@ export class AISettingsDialog extends React.Component<
         })
       }
     } catch (e) {
-      this.showError(e)
+      if (!this.unmounted) {
+        this.setState({ loadError: getMessage(e), isLoading: false })
+      }
     }
   }
 
   public componentWillUnmount() {
     this.unmounted = true
-  }
-
-  private showError(e: unknown) {
-    if (!this.unmounted) {
-      const errorMessage = e instanceof Error ? e.message : String(e)
-      this.setState({ errorMessage, isLoading: false })
-    }
   }
 
   /** The settings the form shows: the project's own, else the global ones. */
@@ -215,12 +216,14 @@ export class AISettingsDialog extends React.Component<
 
   private onSubmit = async () => {
     const { global, project } = this.state
+    this.setState({ saveError: null })
 
     try {
-      await saveGlobalAIAnalysisSettings(global)
-      await saveProjectAIAnalysisSettings(this.props.repository, project)
+      await saveAIAnalysisSettings(this.props.repository, global, project)
     } catch (e) {
-      this.showError(e)
+      if (!this.unmounted) {
+        this.setState({ saveError: getMessage(e) })
+      }
       return
     }
 
@@ -396,8 +399,22 @@ export class AISettingsDialog extends React.Component<
     )
   }
 
+  private renderContent() {
+    if (this.state.isLoading) {
+      return <p>Loading settings…</p>
+    }
+
+    // The form would show the built-in settings as if they were the user's.
+    if (this.state.loadError !== null) {
+      return <p>The settings couldn't be loaded, so they can't be changed.</p>
+    }
+
+    return this.renderForm()
+  }
+
   public render() {
-    const { isLoading, errorMessage } = this.state
+    const { isLoading, loadError, saveError } = this.state
+    const error = loadError ?? saveError
 
     return (
       <Dialog
@@ -407,14 +424,12 @@ export class AISettingsDialog extends React.Component<
         onDismissed={this.props.onDismissed}
         loading={isLoading}
       >
-        {errorMessage !== null && <DialogError>{errorMessage}</DialogError>}
-        <DialogContent>
-          {isLoading ? <p>Loading settings…</p> : this.renderForm()}
-        </DialogContent>
+        {error !== null && <DialogError>{error}</DialogError>}
+        <DialogContent>{this.renderContent()}</DialogContent>
         <DialogFooter>
           <OkCancelButtonGroup
             okButtonText="Save"
-            okButtonDisabled={isLoading || errorMessage !== null}
+            okButtonDisabled={isLoading || loadError !== null}
           />
         </DialogFooter>
       </Dialog>

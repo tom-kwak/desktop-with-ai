@@ -1,4 +1,4 @@
-import { beforeEach, describe, it } from 'node:test'
+import { beforeEach, describe, it, mock } from 'node:test'
 import assert from 'node:assert'
 import { AIReviewDatabase } from '../../../src/lib/ai/ai-review-database'
 import {
@@ -11,6 +11,7 @@ import {
   loadEffectiveAIAnalysisSettings,
   loadGlobalAIAnalysisSettings,
   loadProjectAIAnalysisSettings,
+  saveAIAnalysisSettings,
   saveGlobalAIAnalysisSettings,
   saveProjectAIAnalysisSettings,
 } from '../../../src/lib/ai/ai-settings'
@@ -79,6 +80,16 @@ describe('the default prompt', () => {
       getDefaultSettingsResetTo(settings).defaultPromptText,
       undefined
     )
+  })
+
+  it("replaces a project's text when it is reset", () => {
+    // The built-in settings don't have the key at all, and the dialog merges
+    // the result over the project's settings.
+    const custom = { ...project, defaultPromptText: 'project' }
+    const reset = getProjectSettingsResetTo(DefaultAIAnalysisSettings, custom)
+
+    const merged = { ...custom, ...reset }
+    assert.strictEqual(merged.defaultPromptText, undefined)
   })
 
   it("follows the defaults' text when a project is reset", () => {
@@ -185,5 +196,62 @@ describe('stored settings', () => {
 
     const settings = await loadGlobalAIAnalysisSettings(db)
     assert.strictEqual(settings.agent, 'claude')
+  })
+
+  it('imports once when settings are loaded at the same time', async () => {
+    localStorage.setItem('ai-analysis-settings', JSON.stringify(defaults))
+    const put = mock.method(db.settings, 'put')
+
+    await Promise.all([
+      loadGlobalAIAnalysisSettings(db),
+      loadGlobalAIAnalysisSettings(db),
+      loadProjectAIAnalysisSettings(repository, db),
+    ])
+
+    assert.strictEqual(put.mock.callCount(), 1)
+    put.mock.restore()
+  })
+
+  it('tries the import again when it fails', async () => {
+    localStorage.setItem('ai-analysis-settings', JSON.stringify(defaults))
+    const put = mock.method(db.settings, 'put', async () => {
+      throw new Error('disk full')
+    })
+
+    await assert.rejects(loadGlobalAIAnalysisSettings(db))
+    assert.notStrictEqual(localStorage.getItem('ai-analysis-settings'), null)
+
+    put.mock.restore()
+    const settings = await loadGlobalAIAnalysisSettings(db)
+    assert.strictEqual(settings.agent, 'gemini')
+    assert.strictEqual(localStorage.getItem('ai-analysis-settings'), null)
+  })
+
+  it('drops settings that could never be loaded', async () => {
+    localStorage.setItem('ai-analysis-settings', 'not json')
+
+    const settings = await loadGlobalAIAnalysisSettings(db)
+    assert.deepStrictEqual(settings, DefaultAIAnalysisSettings)
+    assert.strictEqual(localStorage.getItem('ai-analysis-settings'), null)
+  })
+
+  it('saves the defaults and a project together', async () => {
+    await saveAIAnalysisSettings(repository, defaults, project, db)
+
+    const own = await loadProjectAIAnalysisSettings(repository, db)
+    assert.strictEqual((await loadGlobalAIAnalysisSettings(db)).agent, 'gemini')
+    assert.strictEqual(own?.agent, 'claude')
+  })
+
+  it('saves neither when one of them fails', async () => {
+    await saveGlobalAIAnalysisSettings(project, db)
+    const remove = mock.method(db.settings, 'delete', async () => {
+      throw new Error('disk full')
+    })
+
+    await assert.rejects(saveAIAnalysisSettings(repository, defaults, null, db))
+    remove.mock.restore()
+
+    assert.strictEqual((await loadGlobalAIAnalysisSettings(db)).agent, 'claude')
   })
 })

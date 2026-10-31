@@ -167,12 +167,24 @@ async function importFromLocalStorage(db: AIReviewDatabase) {
     try {
       value = JSON.parse(localStorage.getItem(key) ?? '')
     } catch {
-      // Unreadable settings are dropped, like when loading them.
+      // Handled below, like any other value that isn't settings.
     }
 
-    if (isRecord(value) && (await db.settings.get(storedKey)) === undefined) {
-      await db.settings.put({ key: storedKey, value })
+    if (isRecord(value)) {
+      const settings = value
+      // In a transaction because the dialogs load several settings at once,
+      // and saved settings must win over ones still waiting to be imported.
+      await db.transaction('rw', db.settings, async () => {
+        if ((await db.settings.get(storedKey)) === undefined) {
+          await db.settings.put({ key: storedKey, value: settings })
+        }
+      })
+    } else {
+      // These could never be loaded, so nothing that worked is lost.
+      log.warn(`Dropping unreadable AI review settings in ${key}`)
     }
+
+    // Only reached once imported: on a failure the next load tries again.
     localStorage.removeItem(key)
   }
 }
@@ -249,6 +261,22 @@ export async function saveProjectAIAnalysisSettings(
   }
 }
 
+/**
+ * Stores the defaults and a project's settings together: either both are saved
+ * or, on a failure, neither is.
+ */
+export async function saveAIAnalysisSettings(
+  repository: StoredRepository,
+  global: IAIAnalysisSettings,
+  project: IAIAnalysisSettings | null,
+  db: AIReviewDatabase = getAIReviewDatabase()
+) {
+  await db.transaction('rw', db.settings, async () => {
+    await saveGlobalAIAnalysisSettings(global, db)
+    await saveProjectAIAnalysisSettings(repository, project, db)
+  })
+}
+
 export interface IEffectiveAIAnalysisSettings {
   readonly settings: IAIAnalysisSettings
   /** Whether the settings come from the project rather than the global ones. */
@@ -295,6 +323,9 @@ export function getProjectSettingsResetTo(
   const inDefaults = new Set(defaults.customPrompts.map(p => p.id))
   return {
     ...defaults,
+    // Spelled out because the built-in settings don't have this key, and the
+    // result is merged over the project's settings: without the key, the
+    // project's own text would survive the reset.
     defaultPromptText: defaults.defaultPromptText,
     customPrompts: [
       ...defaults.customPrompts,
