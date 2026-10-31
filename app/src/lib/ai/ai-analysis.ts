@@ -17,11 +17,34 @@ const TimeoutMs = 5 * 60 * 1000
 /** Reading the repository takes the agent longer. */
 const RepositoryAccessTimeoutMs = 10 * 60 * 1000
 
+/** A commit that was part of a review, with its message. */
+export interface IReviewedCommit {
+  readonly sha: string
+  readonly shortSha: string
+  readonly summary: string
+  /** The rest of the commit message. */
+  readonly body: string
+}
+
+/** The branch a branch review compared. */
+export interface IReviewedBranch {
+  readonly name: string
+  /** The branch or ref it was compared against. */
+  readonly baseRef: string
+}
+
 export interface IAIAnalysisInput {
   /** `git log` style description of the selected commits. */
   readonly log: string
   /** Patch text of the selected commits. */
   readonly diff: string
+  /**
+   * The commits behind the log, kept with the saved review. Not sent to the
+   * agent on their own and not part of what makes two reviews the same.
+   */
+  readonly commits?: ReadonlyArray<IReviewedCommit>
+  /** Set when the input is a branch compared to a base branch. */
+  readonly branch?: IReviewedBranch
 }
 
 const PreambleStart = `You are a senior engineer reviewing git history inside a git client.

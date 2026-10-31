@@ -1,12 +1,21 @@
 import { createHash } from 'crypto'
 import { Repository } from '../../models/repository'
 import { Commit } from '../../models/commit'
-import { IAIAnalysisInput } from '../ai/ai-analysis'
+import { IAIAnalysisInput, IReviewedCommit } from '../ai/ai-analysis'
 import { git } from './core'
 import { getCommits } from './log'
 
 /** Most commits listed when reviewing a whole branch. */
 const MaxBranchCommits = 200
+
+function toReviewedCommit(c: Commit): IReviewedCommit {
+  return {
+    sha: c.sha,
+    shortSha: c.shortSha,
+    summary: c.summary,
+    body: c.body.trim(),
+  }
+}
 
 function formatCommitLog(commits: ReadonlyArray<Commit>): string {
   return commits
@@ -55,7 +64,11 @@ export async function getAIAnalysisInput(
     })
   )
 
-  return { log: formatCommitLog(commits), diff: patches.join('\n') }
+  return {
+    log: formatCommitLog(commits),
+    diff: patches.join('\n'),
+    commits: commits.map(toReviewedCommit),
+  }
 }
 
 /** Whether `ref` resolves to a commit in the repository. */
@@ -174,7 +187,12 @@ export async function getBranchAnalysisInput(
       ? formatCommitLog(commits)
       : `(no commits ahead of ${baseRef})`
 
-  return { log, diff: sections.join('\n') }
+  return {
+    log,
+    diff: sections.join('\n'),
+    commits: commits.map(toReviewedCommit),
+    branch: { name: await getCurrentBranchName(repository), baseRef },
+  }
 }
 
 /**

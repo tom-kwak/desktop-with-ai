@@ -7,7 +7,11 @@ import {
   getSelectedModel,
   getSelectedReviewPrompt,
 } from './ai-settings'
-import { IAIAnalysisInput } from './ai-analysis'
+import {
+  IAIAnalysisInput,
+  IReviewedBranch,
+  IReviewedCommit,
+} from './ai-analysis'
 import { StoredRepository, getRepositoryStorageKeys } from './repository-key'
 
 const StorageKeyPrefix = 'ai-review-history:'
@@ -39,7 +43,15 @@ export interface IReviewHistoryEntry {
   readonly text: string
   /** What was reviewed, e.g. a commit summary. Missing in older entries. */
   readonly subject?: string
+  /** The commits that were reviewed, with their messages. Missing in older entries. */
+  readonly commits?: ReadonlyArray<IReviewedCommit>
+  /** Set for a branch review. */
+  readonly branch?: IReviewedBranch
 }
+
+/** Commits kept with a review, and how much of each message. */
+const MaxCommitsPerReview = 50
+const MaxCommitBodyLength = 1000
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex')
@@ -73,6 +85,24 @@ export function getReviewConditionKey(
   )
 }
 
+function isCommit(value: unknown): value is IReviewedCommit {
+  return (
+    isRecord(value) &&
+    typeof value.sha === 'string' &&
+    typeof value.shortSha === 'string' &&
+    typeof value.summary === 'string' &&
+    typeof value.body === 'string'
+  )
+}
+
+function isBranch(value: unknown): value is IReviewedBranch {
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    typeof value.baseRef === 'string'
+  )
+}
+
 function isEntry(value: unknown): value is IReviewHistoryEntry {
   return (
     isRecord(value) &&
@@ -85,7 +115,10 @@ function isEntry(value: unknown): value is IReviewHistoryEntry {
     typeof value.promptName === 'string' &&
     typeof value.repositoryAccess === 'boolean' &&
     typeof value.text === 'string' &&
-    (value.subject === undefined || typeof value.subject === 'string')
+    (value.subject === undefined || typeof value.subject === 'string') &&
+    (value.commits === undefined ||
+      (Array.isArray(value.commits) && value.commits.every(isCommit))) &&
+    (value.branch === undefined || isBranch(value.branch))
   )
 }
 
@@ -274,6 +307,10 @@ export function saveReview(
     repositoryAccess: settings.repositoryAccess,
     text,
     subject,
+    commits: input.commits
+      ?.slice(0, MaxCommitsPerReview)
+      .map(c => ({ ...c, body: c.body.slice(0, MaxCommitBodyLength) })),
+    branch: input.branch,
   }
 
   try {
@@ -306,4 +343,61 @@ export function describeReviewEntry(entry: IReviewHistoryEntry): string {
     entry.model || 'default model',
     entry.promptName,
   ].join(' · ')
+}
+
+/** What a review was of: selected commits, or a branch against a base. */
+export type ReviewKind = 'commits' | 'branch'
+
+export function getReviewKind(entry: IReviewHistoryEntry): ReviewKind {
+  return entry.branch === undefined ? 'commits' : 'branch'
+}
+
+export interface IReviewFilter {
+  /** Words that must all appear somewhere in the review or what it covers. */
+  readonly text: string
+  readonly kind: ReviewKind | 'all'
+  readonly agent: AIAgentId | 'all'
+}
+
+export const NoReviewFilter: IReviewFilter = {
+  text: '',
+  kind: 'all',
+  agent: 'all',
+}
+
+/** Everything about a review that the text filter looks at, lower-cased. */
+function getSearchableText(entry: IReviewHistoryEntry): string {
+  return [
+    entry.subject,
+    entry.branch?.name,
+    entry.branch?.baseRef,
+    ...(entry.commits ?? []).flatMap(c => [c.sha, c.summary, c.body]),
+    entry.promptName,
+    entry.model,
+    entry.text,
+  ]
+    .join('\n')
+    .toLowerCase()
+}
+
+/** The reviews that match the filter, in their original order. */
+export function filterReviews(
+  entries: ReadonlyArray<IReviewHistoryEntry>,
+  filter: IReviewFilter
+): ReadonlyArray<IReviewHistoryEntry> {
+  const words = filter.text.toLowerCase().split(/\s+/).filter(Boolean)
+
+  return entries.filter(e => {
+    if (filter.kind !== 'all' && getReviewKind(e) !== filter.kind) {
+      return false
+    }
+    if (filter.agent !== 'all' && e.agent !== filter.agent) {
+      return false
+    }
+    if (words.length === 0) {
+      return true
+    }
+    const searchable = getSearchableText(e)
+    return words.every(w => searchable.includes(w))
+  })
 }
