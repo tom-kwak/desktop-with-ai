@@ -8,7 +8,15 @@ import { Commit } from '../../models/commit'
 import { getAIAnalysisInput } from '../../lib/git/ai-analysis-input'
 import { AIAnalysisDialog } from './ai-analysis-dialog'
 import { AIBranchReviewDialog } from './ai-branch-review-dialog'
+import { AIReviewHistoryDialog } from './ai-review-history-dialog'
 import { AISettingsDialog } from './ai-settings-dialog'
+
+/** Short description of the commits for the review dialog and its history. */
+function describeCommits(commits: ReadonlyArray<Commit>): string {
+  const [first] = commits
+  const more = commits.length > 1 ? ` (+${commits.length - 1} more)` : ''
+  return `${first.shortSha} ${first.summary}${more}`
+}
 
 interface IAIAnalysisBarProps {
   readonly repository: Repository
@@ -23,7 +31,7 @@ interface IAIAnalysisBarProps {
 }
 
 /** The AI dialog currently shown, if any. */
-type AIDialog = 'commits' | 'branch' | 'settings'
+type AIDialog = 'commits' | 'branch' | 'history' | 'settings'
 
 interface IAIAnalysisBarState {
   readonly dialog: AIDialog | null
@@ -46,6 +54,8 @@ export class AIAnalysisBar extends React.Component<
 
   private onOpenBranch = () => this.setState({ dialog: 'branch' })
 
+  private onOpenHistory = () => this.setState({ dialog: 'history' })
+
   private onOpenSettings = () => this.setState({ dialog: 'settings' })
 
   private onCloseDialog = () => this.setState({ dialog: null })
@@ -64,7 +74,7 @@ export class AIAnalysisBar extends React.Component<
             <AIAnalysisDialog
               repository={repository}
               title={__DARWIN__ ? 'AI Commit Review' : 'AI commit review'}
-              subject={`${commits.length} commit(s)`}
+              subject={describeCommits(commits)}
               getInput={() => getAIAnalysisInput(repository, commits)}
               onDismissed={this.onCloseDialog}
             />
@@ -74,6 +84,15 @@ export class AIAnalysisBar extends React.Component<
         return (
           <DialogStackContext.Provider value={{ isTopMost: true }}>
             <AIBranchReviewDialog
+              repository={repository}
+              onDismissed={this.onCloseDialog}
+            />
+          </DialogStackContext.Provider>
+        )
+      case 'history':
+        return (
+          <DialogStackContext.Provider value={{ isTopMost: true }}>
+            <AIReviewHistoryDialog
               repository={repository}
               onDismissed={this.onCloseDialog}
             />
@@ -103,6 +122,9 @@ export class AIAnalysisBar extends React.Component<
           ariaLabel="AI review settings"
         >
           <Octicon symbol={octicons.gear} />
+        </Button>
+        <Button onClick={this.onOpenHistory}>
+          <Octicon symbol={octicons.history} /> Past reviews
         </Button>
         <Button onClick={this.onOpenBranch}>
           <Octicon symbol={octicons.gitBranch} /> Review branch

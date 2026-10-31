@@ -28,6 +28,8 @@ export interface IReviewHistoryEntry {
   readonly promptName: string
   readonly repositoryAccess: boolean
   readonly text: string
+  /** What was reviewed, e.g. a commit summary. Missing in older entries. */
+  readonly subject?: string
 }
 
 function sha256(value: string): string {
@@ -65,7 +67,8 @@ function isEntry(value: unknown): value is IReviewHistoryEntry {
     typeof value.model === 'string' &&
     typeof value.promptName === 'string' &&
     typeof value.repositoryAccess === 'boolean' &&
-    typeof value.text === 'string'
+    typeof value.text === 'string' &&
+    (value.subject === undefined || typeof value.subject === 'string')
   )
 }
 
@@ -78,6 +81,13 @@ function readAll(repositoryPath: string): ReadonlyArray<IReviewHistoryEntry> {
   } catch {
     return []
   }
+}
+
+/** Every saved review of a repository, newest first. */
+export function loadAllReviewHistory(
+  repositoryPath: string
+): ReadonlyArray<IReviewHistoryEntry> {
+  return [...readAll(repositoryPath)].sort((a, b) => b.createdAt - a.createdAt)
 }
 
 /** Reviews of the same input, newest first. */
@@ -98,7 +108,8 @@ export function saveReview(
   repositoryPath: string,
   input: IAIAnalysisInput,
   settings: IAIAnalysisSettings,
-  text: string
+  text: string,
+  subject: string
 ): IReviewHistoryEntry {
   const entry: IReviewHistoryEntry = {
     id: `${Date.now()}-${sha256(text).slice(0, 8)}`,
@@ -110,22 +121,37 @@ export function saveReview(
     promptName: getSelectedReviewPrompt(settings).name,
     repositoryAccess: settings.repositoryAccess,
     text,
+    subject,
   }
 
-  try {
-    const kept = [entry, ...readAll(repositoryPath)].slice(
-      0,
-      MaxEntriesPerRepository
-    )
-    localStorage.setItem(
-      `${StorageKeyPrefix}${repositoryPath}`,
-      JSON.stringify(kept)
-    )
-  } catch {
-    // Not kept; see above.
-  }
+  writeAll(
+    repositoryPath,
+    [entry, ...readAll(repositoryPath)].slice(0, MaxEntriesPerRepository)
+  )
 
   return entry
+}
+
+/** Removes one saved review. */
+export function deleteReview(repositoryPath: string, id: string) {
+  writeAll(
+    repositoryPath,
+    readAll(repositoryPath).filter(e => e.id !== id)
+  )
+}
+
+function writeAll(
+  repositoryPath: string,
+  entries: ReadonlyArray<IReviewHistoryEntry>
+) {
+  try {
+    localStorage.setItem(
+      `${StorageKeyPrefix}${repositoryPath}`,
+      JSON.stringify(entries)
+    )
+  } catch {
+    // Not kept; history is best effort.
+  }
 }
 
 /** One-line description of an entry for a list. */

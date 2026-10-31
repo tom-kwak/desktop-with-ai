@@ -4,9 +4,7 @@ import { DefaultDialogFooter } from '../dialog/default-dialog-footer'
 import { Button } from '../lib/button'
 import { Loading } from '../lib/loading'
 import { Select } from '../lib/select'
-import { SandboxedMarkdown } from '../lib/sandboxed-markdown'
-import { openExternal } from '../main-process-proxy'
-import { Emoji } from '../../lib/emoji'
+import { AIReviewMarkdown } from './ai-review-markdown'
 import { Repository } from '../../models/repository'
 import { IAIAnalysisInput, analyzeWithAgent } from '../../lib/ai/ai-analysis'
 import {
@@ -23,28 +21,6 @@ import {
   getSelectedReviewPrompt,
   loadEffectiveAIAnalysisSettings,
 } from '../../lib/ai/ai-settings'
-
-/** A review isn't expected to contain emoji shortcodes, so none are resolved. */
-const NoEmoji = new Map<string, Emoji>()
-
-/**
- * Headings sized for a dialog rather than a full page, matching the compact
- * style used for other Copilot summaries.
- */
-const ReviewMarkdownCSS = `
-  .markdown-body h1,
-  .markdown-body h2,
-  .markdown-body h3 {
-    font-size: 1.1em;
-    margin-top: 1em;
-    margin-bottom: 0.25em;
-    padding-bottom: 0;
-    border-bottom: none;
-  }
-  .markdown-body > :first-child {
-    margin-top: 0;
-  }
-`
 
 interface IAIAnalysisDialogProps {
   readonly repository: Repository
@@ -175,7 +151,8 @@ export class AIAnalysisDialog extends React.Component<
         this.props.repository.path,
         input,
         this.effective.settings,
-        text
+        text,
+        this.props.subject
       )
       this.setState({
         analysis: { kind: 'done', text },
@@ -209,10 +186,6 @@ export class AIAnalysisDialog extends React.Component<
         isFromHistory: true,
       })
     }
-  }
-
-  private onLinkClicked = (url: string) => {
-    openExternal(url)
   }
 
   private renderSummary() {
@@ -291,18 +264,7 @@ export class AIAnalysisDialog extends React.Component<
       case 'error':
         return <p className="ai-analysis-error">{analysis.message}</p>
       case 'done':
-        return (
-          <div className="ai-analysis-text">
-            <SandboxedMarkdown
-              markdown={analysis.text}
-              emoji={NoEmoji}
-              underlineLinks={true}
-              title="AI review"
-              customCSS={ReviewMarkdownCSS}
-              onMarkdownLinkClicked={this.onLinkClicked}
-            />
-          </div>
-        )
+        return <AIReviewMarkdown markdown={analysis.text} />
     }
   }
 
