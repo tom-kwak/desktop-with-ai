@@ -1,8 +1,8 @@
 {
   "name": "desktop",
-  "productName": "GitHub Desktop",
-  "bundleID": "com.github.GitHubClient",
-  "companyName": "GitHub, Inc.",
+  "productName": "ReviewDesk",
+  "bundleID": "com.tomkwak.ReviewDesk",
+  "companyName": "tom-kwak",
   "version": "3.6.10",
   "main": "./main.js",
   "repository": {
