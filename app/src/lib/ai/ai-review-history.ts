@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import Dexie from 'dexie'
 import { isRecord } from '../is-record'
 import {
   AIAgentId,
@@ -12,20 +13,34 @@ import {
   IReviewedBranch,
   IReviewedCommit,
 } from './ai-analysis'
+import { AIReviewDatabase, IStoredReview } from './ai-review-database'
 import { StoredRepository, getRepositoryStorageKeys } from './repository-key'
 
-const StorageKeyPrefix = 'ai-review-history:'
+/** Where reviews were kept before they moved to the database. */
+const LocalStorageKeyPrefix = 'ai-review-history:'
 
-/** Most reviews kept per repository; the oldest are dropped first. */
-const MaxEntriesPerRepository = 50
+export interface IReviewHistoryLimits {
+  /** Most reviews kept per repository; the oldest are dropped first. */
+  readonly maxReviewsPerRepository: number
+  /**
+   * Most characters of reviews kept across all repositories. The oldest
+   * reviews of any repository are dropped to stay within this, which also lets
+   * the reviews of repositories that are gone age out.
+   */
+  readonly maxStoredCharacters: number
+}
 
-/**
- * Most characters of review history kept across all repositories. The browser
- * storage holds only a few MB and is shared with the rest of the app, so the
- * oldest reviews of any repository are dropped to stay within this, which also
- * lets the history of repositories that are gone age out.
- */
-const MaxStoredCharacters = 1_500_000
+const DefaultLimits: IReviewHistoryLimits = {
+  maxReviewsPerRepository: 500,
+  maxStoredCharacters: 50_000_000,
+}
+
+let defaultDatabase: AIReviewDatabase | null = null
+
+function getDefaultDatabase(): AIReviewDatabase {
+  defaultDatabase ??= new AIReviewDatabase('AIReviewDatabase')
+  return defaultDatabase
+}
 
 /** A review that was run and saved. */
 export interface IReviewHistoryEntry {
@@ -50,8 +65,8 @@ export interface IReviewHistoryEntry {
 }
 
 /** Commits kept with a review, and how much of each message. */
-const MaxCommitsPerReview = 50
-const MaxCommitBodyLength = 1000
+const MaxCommitsPerReview = 200
+const MaxCommitBodyLength = 5000
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex')
@@ -131,171 +146,142 @@ function parseEntries(raw: string | null): ReadonlyArray<IReviewHistoryEntry> {
   }
 }
 
-/** The reviews saved for a repository, including any saved under its path. */
-function readAll(repository: StoredRepository): IReviewHistoryEntry[] {
-  const { current, legacy } = getRepositoryStorageKeys(repository)
-  const entries = new Map<string, IReviewHistoryEntry>()
-
-  for (const key of new Set([current, legacy])) {
-    const raw = localStorage.getItem(`${StorageKeyPrefix}${key}`)
-    for (const entry of parseEntries(raw)) {
-      entries.set(entry.id, entry)
-    }
-  }
-
-  return [...entries.values()]
+function toStored(
+  entry: IReviewHistoryEntry,
+  repositoryKey: string
+): IStoredReview {
+  return { ...entry, repositoryKey, size: JSON.stringify(entry).length }
 }
 
-interface IStoredList {
-  readonly key: string
-  entries: IReviewHistoryEntry[]
-}
-
-/** Every history list in storage other than the one under `exceptKey`. */
-function readOtherLists(exceptKey: string): IStoredList[] {
-  const lists: IStoredList[] = []
-
+/** Moves reviews saved by earlier versions out of local storage. */
+async function importFromLocalStorage(db: AIReviewDatabase) {
+  const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)
-    if (key?.startsWith(StorageKeyPrefix) && key !== exceptKey) {
-      lists.push({ key, entries: [...parseEntries(localStorage.getItem(key))] })
+    if (key?.startsWith(LocalStorageKeyPrefix)) {
+      keys.push(key)
     }
   }
 
-  return lists
-}
-
-function writeList(key: string, entries: ReadonlyArray<IReviewHistoryEntry>) {
-  if (entries.length === 0) {
+  for (const key of keys) {
+    const repositoryKey = key.slice(LocalStorageKeyPrefix.length)
+    await db.reviews.bulkPut(
+      parseEntries(localStorage.getItem(key)).map(e =>
+        toStored(e, repositoryKey)
+      )
+    )
     localStorage.removeItem(key)
-  } else {
-    localStorage.setItem(key, JSON.stringify(entries))
   }
 }
 
 /**
- * Stores a repository's reviews, dropping the oldest reviews of any repository
- * when the history gets too large or the storage is full. `keepId` is never
- * dropped. Returns whether the reviews were stored.
+ * Gets stored reviews ready to be used for a repository and returns its key:
+ * anything still in local storage is moved over, and reviews filed under the
+ * repository's path are refiled under its current key.
  */
-function persist(
+async function prepare(
   repository: StoredRepository,
-  reviews: ReadonlyArray<IReviewHistoryEntry>,
-  keepId?: string
-): boolean {
+  db: AIReviewDatabase
+): Promise<string> {
+  await importFromLocalStorage(db)
+
   const { current, legacy } = getRepositoryStorageKeys(repository)
-  const key = `${StorageKeyPrefix}${current}`
-  const own = [...reviews]
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, MaxEntriesPerRepository)
-  const others = readOtherLists(key).filter(
-    l => l.key !== `${StorageKeyPrefix}${legacy}`
-  )
-
-  const size = () =>
-    JSON.stringify(own).length +
-    others.reduce((n, l) => n + JSON.stringify(l.entries).length, 0)
-
-  /** Drops the oldest review that may be dropped; false if none can be. */
-  const dropOldest = (): boolean => {
-    // The list holding the oldest review (null for the repository's own) and
-    // its position in that list.
-    let from: IStoredList | null = null
-    let index = -1
-    let oldestAt = Infinity
-
-    for (let i = 0; i < own.length; i++) {
-      if (own[i].id !== keepId && own[i].createdAt < oldestAt) {
-        from = null
-        index = i
-        oldestAt = own[i].createdAt
-      }
-    }
-    for (const list of others) {
-      for (let i = 0; i < list.entries.length; i++) {
-        if (list.entries[i].createdAt < oldestAt) {
-          from = list
-          index = i
-          oldestAt = list.entries[i].createdAt
-        }
-      }
-    }
-
-    if (index === -1) {
-      return false
-    }
-
-    if (from === null) {
-      own.splice(index, 1)
-    } else {
-      from.entries.splice(index, 1)
-      try {
-        writeList(from.key, from.entries)
-      } catch {
-        // The list is trimmed in memory; storing the new reviews decides
-        // whether this was enough.
-      }
-    }
-    return true
-  }
-
-  while (size() > MaxStoredCharacters && dropOldest()) {
-    // Keep dropping until the history fits.
-  }
-
-  // The storage can be full for reasons that have nothing to do with us.
-  for (;;) {
-    try {
-      writeList(key, own)
-      break
-    } catch {
-      if (!dropOldest()) {
-        return false
-      }
-    }
-  }
-
-  // Anything found under the old path key now lives under the current key.
   if (legacy !== current) {
-    localStorage.removeItem(`${StorageKeyPrefix}${legacy}`)
+    await db.reviews
+      .where('repositoryKey')
+      .equals(legacy)
+      .modify({ repositoryKey: current })
   }
-  return true
+  return current
+}
+
+function newestFirst(reviews: ReadonlyArray<IStoredReview>) {
+  return [...reviews].sort((a, b) => b.createdAt - a.createdAt)
 }
 
 /** Every saved review of a repository, newest first. */
-export function loadAllReviewHistory(
-  repository: StoredRepository
-): ReadonlyArray<IReviewHistoryEntry> {
-  return readAll(repository).sort((a, b) => b.createdAt - a.createdAt)
+export async function loadAllReviewHistory(
+  repository: StoredRepository,
+  db: AIReviewDatabase = getDefaultDatabase()
+): Promise<ReadonlyArray<IReviewHistoryEntry>> {
+  const repositoryKey = await prepare(repository, db)
+  return newestFirst(
+    await db.reviews.where('repositoryKey').equals(repositoryKey).toArray()
+  )
 }
 
 /** Reviews of the same input, newest first. */
-export function loadReviewHistory(
+export async function loadReviewHistory(
   repository: StoredRepository,
-  inputHash: string
-): ReadonlyArray<IReviewHistoryEntry> {
-  return loadAllReviewHistory(repository).filter(e => e.inputHash === inputHash)
+  inputHash: string,
+  db: AIReviewDatabase = getDefaultDatabase()
+): Promise<ReadonlyArray<IReviewHistoryEntry>> {
+  const repositoryKey = await prepare(repository, db)
+  return newestFirst(
+    await db.reviews
+      .where('[repositoryKey+inputHash]')
+      .equals([repositoryKey, inputHash])
+      .toArray()
+  )
+}
+
+/** Drops the oldest reviews that are over the limits; `keepId` always stays. */
+async function trim(
+  db: AIReviewDatabase,
+  repositoryKey: string,
+  keepId: string,
+  limits: IReviewHistoryLimits
+) {
+  const ofRepository = () =>
+    db.reviews
+      .where('[repositoryKey+createdAt]')
+      .between([repositoryKey, Dexie.minKey], [repositoryKey, Dexie.maxKey])
+
+  const excess = (await ofRepository().count()) - limits.maxReviewsPerRepository
+  if (excess > 0) {
+    await db.reviews.bulkDelete(
+      await ofRepository().limit(excess).primaryKeys()
+    )
+  }
+
+  // The sizes come from the index, so this doesn't load the reviews themselves.
+  const sizes = await db.reviews.orderBy('size').keys()
+  let total = sizes.reduce((sum: number, size) => sum + Number(size), 0)
+
+  while (total > limits.maxStoredCharacters) {
+    const oldest = await db.reviews
+      .orderBy('createdAt')
+      .filter(r => r.id !== keepId)
+      .first()
+    if (oldest === undefined) {
+      break
+    }
+    await db.reviews.delete(oldest.id)
+    total -= oldest.size
+  }
 }
 
 export interface ISavedReview {
   readonly entry: IReviewHistoryEntry
   /**
-   * Whether the review was kept. When it wasn't (the storage is full or
-   * unavailable) the review is still returned so it can be shown, but it
-   * won't be found in the history later.
+   * Whether the review was kept. When it wasn't (the disk is full or the
+   * database unavailable) the review is still returned so it can be shown,
+   * but it won't be found in the history later.
    */
   readonly saved: boolean
 }
 
 /** Saves a finished review. */
-export function saveReview(
+export async function saveReview(
   repository: StoredRepository,
   input: IAIAnalysisInput,
   settings: IAIAnalysisSettings,
   conditionKey: string,
   text: string,
-  subject: string
-): ISavedReview {
+  subject: string,
+  db: AIReviewDatabase = getDefaultDatabase(),
+  limits: IReviewHistoryLimits = DefaultLimits
+): Promise<ISavedReview> {
   const entry: IReviewHistoryEntry = {
     id: `${Date.now()}-${sha256(text).slice(0, 8)}`,
     inputHash: getReviewInputHash(input),
@@ -314,25 +300,24 @@ export function saveReview(
   }
 
   try {
-    return {
-      entry,
-      saved: persist(repository, [entry, ...readAll(repository)], entry.id),
-    }
-  } catch {
+    const repositoryKey = await prepare(repository, db)
+    await db.transaction('rw', db.reviews, async () => {
+      await db.reviews.put(toStored(entry, repositoryKey))
+      await trim(db, repositoryKey, entry.id, limits)
+    })
+    return { entry, saved: true }
+  } catch (e) {
+    log.warn('Failed to save the AI review', e)
     return { entry, saved: false }
   }
 }
 
 /** Removes one saved review. */
-export function deleteReview(repository: StoredRepository, id: string) {
-  try {
-    persist(
-      repository,
-      readAll(repository).filter(e => e.id !== id)
-    )
-  } catch {
-    // Nothing more can be done if the storage is unavailable.
-  }
+export async function deleteReview(
+  id: string,
+  db: AIReviewDatabase = getDefaultDatabase()
+) {
+  await db.reviews.delete(id)
 }
 
 /** One-line description of an entry for a list. */

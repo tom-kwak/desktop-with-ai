@@ -29,6 +29,10 @@ interface IAIReviewHistoryDialogState {
   readonly entries: ReadonlyArray<IReviewHistoryEntry>
   readonly filter: IReviewFilter
   readonly selectedId: string | null
+  /** Whether the reviews are still being read from the database. */
+  readonly isLoading: boolean
+  /** Set if the reviews couldn't be read or changed. */
+  readonly errorMessage: string | null
 }
 
 /** Commit messages are shown open when there are only a few commits. */
@@ -43,14 +47,43 @@ export class AIReviewHistoryDialog extends React.Component<
   IAIReviewHistoryDialogProps,
   IAIReviewHistoryDialogState
 > {
+  private unmounted = false
+
   public constructor(props: IAIReviewHistoryDialogProps) {
     super(props)
 
-    const entries = loadAllReviewHistory(props.repository)
     this.state = {
-      entries,
+      entries: [],
       filter: NoReviewFilter,
-      selectedId: entries[0]?.id ?? null,
+      selectedId: null,
+      isLoading: true,
+      errorMessage: null,
+    }
+  }
+
+  public async componentDidMount() {
+    try {
+      const entries = await loadAllReviewHistory(this.props.repository)
+      if (!this.unmounted) {
+        this.setState({
+          entries,
+          selectedId: entries[0]?.id ?? null,
+          isLoading: false,
+        })
+      }
+    } catch (e) {
+      this.showError(e)
+    }
+  }
+
+  public componentWillUnmount() {
+    this.unmounted = true
+  }
+
+  private showError(e: unknown) {
+    if (!this.unmounted) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      this.setState({ errorMessage, isLoading: false })
     }
   }
 
@@ -82,21 +115,28 @@ export class AIReviewHistoryDialog extends React.Component<
     this.setState({ filter: NoReviewFilter })
   }
 
-  private onDelete = () => {
+  private onDelete = async () => {
     const { selected, visible } = this
     if (selected === undefined) {
       return
     }
 
-    deleteReview(this.props.repository, selected.id)
+    try {
+      await deleteReview(selected.id)
+    } catch (e) {
+      this.showError(e)
+      return
+    }
 
     // Show the review that took the deleted one's place in the list.
     const index = visible.indexOf(selected)
     const remaining = visible.filter(e => e !== selected)
-    this.setState({
-      entries: this.state.entries.filter(e => e.id !== selected.id),
-      selectedId: (remaining[index] ?? remaining[index - 1])?.id ?? null,
-    })
+    if (!this.unmounted) {
+      this.setState({
+        entries: this.state.entries.filter(e => e.id !== selected.id),
+        selectedId: (remaining[index] ?? remaining[index - 1])?.id ?? null,
+      })
+    }
   }
 
   private renderFilter() {
@@ -205,8 +245,16 @@ export class AIReviewHistoryDialog extends React.Component<
   }
 
   private renderBody() {
-    const { entries } = this.state
+    const { entries, isLoading, errorMessage } = this.state
     const selected = this.selected
+
+    if (errorMessage !== null) {
+      return <p className="ai-analysis-error">{errorMessage}</p>
+    }
+
+    if (isLoading) {
+      return <p>Loading saved reviews…</p>
+    }
 
     if (entries.length === 0) {
       return <p>There are no saved reviews for this repository yet.</p>

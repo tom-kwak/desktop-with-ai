@@ -48,6 +48,15 @@ dialog#ai-past-reviews {
   width: 960px;
   max-width: 95vw;
 
+  .ai-analysis-meta {
+    margin-top: 0;
+    color: var(--text-secondary-color);
+  }
+
+  .ai-analysis-error {
+    color: var(--error-color);
+  }
+
   .ai-past-filter {
     display: flex;
     align-items: flex-end;

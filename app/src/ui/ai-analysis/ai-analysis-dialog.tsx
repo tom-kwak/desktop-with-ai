@@ -121,7 +121,7 @@ export class AIAnalysisDialog extends React.Component<
 
     try {
       const input = await this.getInput()
-      const history = loadReviewHistory(
+      const history = await loadReviewHistory(
         this.props.repository,
         getReviewInputHash(input)
       )
@@ -167,7 +167,7 @@ export class AIAnalysisDialog extends React.Component<
         return
       }
 
-      const { entry, saved } = saveReview(
+      const { entry, saved } = await saveReview(
         this.props.repository,
         input,
         this.effective.settings,
@@ -175,7 +175,10 @@ export class AIAnalysisDialog extends React.Component<
         text,
         this.props.subject
       )
-      const stored = loadReviewHistory(this.props.repository, entry.inputHash)
+      const stored = await loadReviewHistory(
+        this.props.repository,
+        entry.inputHash
+      )
       this.setState({
         analysis: { kind: 'done', text },
         // A review that couldn't be kept is still listed while the dialog is
@@ -235,8 +238,8 @@ export class AIAnalysisDialog extends React.Component<
         </p>
         {this.state.isNotSaved && (
           <p className="ai-analysis-error">
-            This review couldn't be saved to the history because the storage is
-            full, so it won't be shown again after this dialog is closed.
+            This review couldn't be saved to the history, so it won't be shown
+            again after this dialog is closed.
           </p>
         )}
         {isFromHistory && entry && (
