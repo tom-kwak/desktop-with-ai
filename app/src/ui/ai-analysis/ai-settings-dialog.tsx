@@ -118,9 +118,9 @@ export class AISettingsDialog extends React.Component<
 
     const next = { ...this.shown, ...changes }
     if (this.state.scope === 'project') {
-      this.setState({ ...this.state, project: next })
+      this.setState({ project: next })
     } else {
-      this.setState({ ...this.state, global: next })
+      this.setState({ global: next })
     }
   }
 
@@ -263,22 +263,32 @@ export class AISettingsDialog extends React.Component<
   }
 
   private renderRepositoryAccess() {
+    const agent = getAIAgent(this.shown.agent)
+    const isSupported = agent.supportsRepositoryAccess
+
     return (
       <>
         <Checkbox
           label="Let the agent read files in the repository"
           value={
-            this.shown.repositoryAccess ? CheckboxValue.On : CheckboxValue.Off
+            isSupported && this.shown.repositoryAccess
+              ? CheckboxValue.On
+              : CheckboxValue.Off
           }
-          disabled={!this.isEditable}
+          disabled={!this.isEditable || !isSupported}
           onChange={this.onRepositoryAccessChanged}
           ariaDescribedBy="ai-repository-access-help"
         />
         <p id="ai-repository-access-help" className="ai-settings-help">
-          Besides the diff, the agent can look at other files, such as callers
-          and tests. It cannot change files or run commands. Anything it reads
-          is sent to the agent, so leave this off for repositories with secrets
-          you don't want shared. Reviews take longer.
+          {isSupported
+            ? `Besides the diff, the agent can look at other files, such as
+              callers and tests. It cannot change files or run commands.
+              Anything it reads is sent to the agent, so leave this off for
+              repositories with secrets you don't want shared. Reviews take
+              longer.`
+            : `${agent.label} only sees the diff. It can't be kept from running
+              what a repository configures for it, so it doesn't run inside
+              the repository.`}
         </p>
       </>
     )

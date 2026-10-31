@@ -65,6 +65,13 @@ export class AIBranchReviewDialog extends React.Component<
     this.unmounted = true
   }
 
+  private getInput = () => {
+    const { started } = this.state
+    return started === null
+      ? Promise.reject(new Error('The review has not been started'))
+      : getBranchAnalysisInput(this.props.repository, started)
+  }
+
   private onBaseRefChanged = (baseRef: string) => this.setState({ baseRef })
 
   private onIncludeUncommittedChanged = (
@@ -96,7 +103,7 @@ export class AIBranchReviewDialog extends React.Component<
           subject={`${branchName ?? 'the current branch'} against ${
             started.baseRef
           }`}
-          getInput={() => getBranchAnalysisInput(repository, started)}
+          getInput={this.getInput}
           onDismissed={onDismissed}
         />
       )
@@ -132,7 +139,10 @@ export class AIBranchReviewDialog extends React.Component<
           />
         </DialogContent>
         <DialogFooter>
-          <OkCancelButtonGroup okButtonText="Review" />
+          <OkCancelButtonGroup
+            okButtonText="Review"
+            okButtonDisabled={this.state.baseRef.trim() === ''}
+          />
         </DialogFooter>
       </Dialog>
     )

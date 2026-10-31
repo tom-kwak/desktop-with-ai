@@ -35,6 +35,8 @@ type AIDialog = 'commits' | 'branch' | 'history' | 'settings'
 
 interface IAIAnalysisBarState {
   readonly dialog: AIDialog | null
+  /** The commits being reviewed, which stay put if the selection changes. */
+  readonly reviewedCommits: ReadonlyArray<Commit>
 }
 
 /**
@@ -47,10 +49,11 @@ export class AIAnalysisBar extends React.Component<
 > {
   public constructor(props: IAIAnalysisBarProps) {
     super(props)
-    this.state = { dialog: null }
+    this.state = { dialog: null, reviewedCommits: [] }
   }
 
-  private onOpenCommits = () => this.setState({ dialog: 'commits' })
+  private onOpenCommits = () =>
+    this.setState({ dialog: 'commits', reviewedCommits: this.props.commits })
 
   private onOpenBranch = () => this.setState({ dialog: 'branch' })
 
@@ -60,8 +63,12 @@ export class AIAnalysisBar extends React.Component<
 
   private onCloseDialog = () => this.setState({ dialog: null })
 
+  private getCommitsInput = () =>
+    getAIAnalysisInput(this.props.repository, this.state.reviewedCommits)
+
   private renderDialog() {
-    const { repository, commits } = this.props
+    const { repository } = this.props
+    const { reviewedCommits } = this.state
 
     // These dialogs aren't part of the app's popup stack, so each one has to
     // declare itself top-most or `Dialog` never calls `showModal()`.
@@ -74,8 +81,8 @@ export class AIAnalysisBar extends React.Component<
             <AIAnalysisDialog
               repository={repository}
               title={__DARWIN__ ? 'AI Commit Review' : 'AI commit review'}
-              subject={describeCommits(commits)}
-              getInput={() => getAIAnalysisInput(repository, commits)}
+              subject={describeCommits(reviewedCommits)}
+              getInput={this.getCommitsInput}
               onDismissed={this.onCloseDialog}
             />
           </DialogStackContext.Provider>

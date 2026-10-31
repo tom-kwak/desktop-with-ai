@@ -22,6 +22,7 @@ import {
   getSelectedModel,
   getSelectedReviewPrompt,
   loadEffectiveAIAnalysisSettings,
+  usesRepositoryAccess,
 } from '../../lib/ai/ai-settings'
 
 interface IAIAnalysisDialogProps {
@@ -119,7 +120,7 @@ export class AIAnalysisDialog extends React.Component<
    */
   private async getConditionKey(): Promise<string> {
     const { settings } = await this.getEffective()
-    const repositoryState = settings.repositoryAccess
+    const repositoryState = usesRepositoryAccess(settings)
       ? await getRepositoryStateKey(this.props.repository)
       : null
     return getReviewConditionKey(settings, repositoryState)
@@ -137,10 +138,7 @@ export class AIAnalysisDialog extends React.Component<
       this.setState({ effective })
 
       const input = await this.getInput()
-      const history = await loadReviewHistory(
-        this.props.repository,
-        getReviewInputHash(input)
-      )
+      const history = await this.loadStoredReviews(getReviewInputHash(input))
       const conditionKey = await this.getConditionKey()
       const saved = history.find(e => e.conditionKey === conditionKey)
 
@@ -192,20 +190,29 @@ export class AIAnalysisDialog extends React.Component<
         text,
         this.props.subject
       )
-      const stored = await loadReviewHistory(
-        this.props.repository,
-        entry.inputHash
-      )
+      const stored = await this.loadStoredReviews(entry.inputHash)
       this.setState({
         analysis: { kind: 'done', text },
         // A review that couldn't be kept is still listed while the dialog is
         // open, so what is shown matches the list.
-        history: saved ? stored : [entry, ...stored],
+        history: stored.some(e => e.id === entry.id)
+          ? stored
+          : [entry, ...stored],
         selectedId: entry.id,
         isNotSaved: !saved,
       })
     } catch (e) {
       this.showError(e, signal)
+    }
+  }
+
+  /** The history is an extra: failing to read it must not cost a review. */
+  private async loadStoredReviews(inputHash: string) {
+    try {
+      return await loadReviewHistory(this.props.repository, inputHash)
+    } catch (e) {
+      log.warn('Failed to load the AI review history', e)
+      return []
     }
   }
 
@@ -248,7 +255,7 @@ export class AIAnalysisDialog extends React.Component<
     const promptName =
       entry?.promptName ?? getSelectedReviewPrompt(settings).name
     const repositoryAccess =
-      entry?.repositoryAccess ?? settings.repositoryAccess
+      entry?.repositoryAccess ?? usesRepositoryAccess(settings)
 
     return (
       <>

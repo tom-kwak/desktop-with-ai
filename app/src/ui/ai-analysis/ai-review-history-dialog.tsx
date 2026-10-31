@@ -1,4 +1,5 @@
 import * as React from 'react'
+import memoizeOne from 'memoize-one'
 import { Dialog, DialogContent } from '../dialog'
 import { DefaultDialogFooter } from '../dialog/default-dialog-footer'
 import { Button } from '../lib/button'
@@ -42,11 +43,43 @@ function describeKind(entry: IReviewHistoryEntry) {
   return getReviewKind(entry) === 'branch' ? 'Branch' : 'Commits'
 }
 
+interface IReviewListItemProps {
+  readonly entry: IReviewHistoryEntry
+  readonly isSelected: boolean
+  readonly onSelected: (id: string) => void
+}
+
+/** One saved review in the list: what it covered and when it was made. */
+class ReviewListItem extends React.Component<IReviewListItemProps> {
+  private onClick = () => {
+    this.props.onSelected(this.props.entry.id)
+  }
+
+  public render() {
+    const { entry, isSelected } = this.props
+
+    return (
+      <button
+        type="button"
+        className={isSelected ? 'ai-past-item selected' : 'ai-past-item'}
+        aria-pressed={isSelected}
+        onClick={this.onClick}
+      >
+        <span className="ai-past-item-title">{entry.subject ?? 'Review'}</span>
+        <span className="ai-past-item-meta">
+          {describeKind(entry)} · {new Date(entry.createdAt).toLocaleString()}
+        </span>
+      </button>
+    )
+  }
+}
+
 /** Browses every review saved for a repository, not just those of one input. */
 export class AIReviewHistoryDialog extends React.Component<
   IAIReviewHistoryDialogProps,
   IAIReviewHistoryDialogState
 > {
+  private filterEntries = memoizeOne(filterReviews)
   private unmounted = false
 
   public constructor(props: IAIReviewHistoryDialogProps) {
@@ -88,7 +121,7 @@ export class AIReviewHistoryDialog extends React.Component<
   }
 
   private get visible() {
-    return filterReviews(this.state.entries, this.state.filter)
+    return this.filterEntries(this.state.entries, this.state.filter)
   }
 
   /** The review shown: the selected one if the filter still lets it through. */
@@ -289,37 +322,6 @@ export class AIReviewHistoryDialog extends React.Component<
         <DialogContent>{this.renderBody()}</DialogContent>
         <DefaultDialogFooter />
       </Dialog>
-    )
-  }
-}
-
-interface IReviewListItemProps {
-  readonly entry: IReviewHistoryEntry
-  readonly isSelected: boolean
-  readonly onSelected: (id: string) => void
-}
-
-/** One saved review in the list: what it covered and when it was made. */
-class ReviewListItem extends React.Component<IReviewListItemProps> {
-  private onClick = () => {
-    this.props.onSelected(this.props.entry.id)
-  }
-
-  public render() {
-    const { entry, isSelected } = this.props
-
-    return (
-      <button
-        type="button"
-        className={isSelected ? 'ai-past-item selected' : 'ai-past-item'}
-        aria-pressed={isSelected}
-        onClick={this.onClick}
-      >
-        <span className="ai-past-item-title">{entry.subject ?? 'Review'}</span>
-        <span className="ai-past-item-meta">
-          {describeKind(entry)} · {new Date(entry.createdAt).toLocaleString()}
-        </span>
-      </button>
     )
   }
 }

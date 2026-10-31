@@ -7,6 +7,7 @@ import {
   getAIAgent,
   getSelectedModel,
   getSelectedReviewPrompt,
+  usesRepositoryAccess,
 } from './ai-settings'
 import {
   IAIAnalysisInput,
@@ -91,7 +92,7 @@ export function getReviewConditionKey(
       settings.agent,
       getSelectedModel(settings),
       getSelectedReviewPrompt(settings).text,
-      settings.repositoryAccess,
+      usesRepositoryAccess(settings),
       repositoryState,
     ])
   )
@@ -292,7 +293,7 @@ export async function saveReview(
     agent: settings.agent,
     model: getSelectedModel(settings),
     promptName: getSelectedReviewPrompt(settings).name,
-    repositoryAccess: settings.repositoryAccess,
+    repositoryAccess: usesRepositoryAccess(settings),
     text,
     subject,
     commits: input.commits

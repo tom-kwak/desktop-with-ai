@@ -3,7 +3,11 @@ import { stat } from 'fs/promises'
 import { join } from 'path'
 import { Repository } from '../../models/repository'
 import { Commit } from '../../models/commit'
-import { IAIAnalysisInput, IReviewedCommit } from '../ai/ai-analysis'
+import {
+  IAIAnalysisInput,
+  IReviewedCommit,
+  MaxDiffCharacters,
+} from '../ai/ai-analysis'
 import { git } from './core'
 import { getCommits } from './log'
 
@@ -44,27 +48,36 @@ export async function getAIAnalysisInput(
   repository: Repository,
   commits: ReadonlyArray<Commit>
 ): Promise<IAIAnalysisInput> {
-  const patches = await Promise.all(
-    commits.map(async c => {
-      // `--format=` suppresses the header; metadata is already in the log.
-      const { stdout } = await git(
-        [
-          'show',
-          '--no-ext-diff',
-          '--no-color',
-          '--format=',
-          '--patch',
-          '--stat',
-          '-M',
-          c.sha,
-          '--',
-        ],
-        repository.path,
-        'getAIAnalysisInput'
-      )
-      return `# ${c.shortSha}\n${stdout}`
-    })
-  )
+  // One at a time, and only until the agent has as much as it will be sent.
+  const patches: string[] = []
+  let length = 0
+
+  for (const c of commits) {
+    if (length >= MaxDiffCharacters) {
+      const omitted = commits.length - patches.length
+      patches.push(`# ${omitted} more commits not included`)
+      break
+    }
+
+    // `--format=` suppresses the header; metadata is already in the log.
+    const { stdout } = await git(
+      [
+        'show',
+        '--no-ext-diff',
+        '--no-color',
+        '--format=',
+        '--patch',
+        '--stat',
+        '-M',
+        c.sha,
+        '--',
+      ],
+      repository.path,
+      'getAIAnalysisInput'
+    )
+    patches.push(`# ${c.shortSha}\n${stdout}`)
+    length += stdout.length
+  }
 
   return {
     log: formatCommitLog(commits),

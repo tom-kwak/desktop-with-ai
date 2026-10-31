@@ -16,6 +16,11 @@ export interface IAIAgent {
   /** Models offered as suggestions; any other model name can be typed. */
   readonly suggestedModels: ReadonlyArray<string>
   /**
+   * Whether the agent can safely run inside a repository: read-only, and
+   * without running hooks or servers that the repository itself configures.
+   */
+  readonly supportsRepositoryAccess: boolean
+  /**
    * Arguments for a read-only, non-interactive run that reads the prompt
    * from stdin. `model` is empty when the CLI's own default should be used.
    * With `repositoryAccess` the agent runs inside the repository and may read
@@ -33,6 +38,7 @@ export const AIAgents: ReadonlyArray<IAIAgent> = [
     label: 'Claude Code',
     command: 'claude',
     suggestedModels: ['sonnet', 'opus', 'haiku'],
+    supportsRepositoryAccess: true,
     buildArgs: (model, repositoryAccess) => [
       '-p',
       '--output-format',
@@ -54,6 +60,7 @@ export const AIAgents: ReadonlyArray<IAIAgent> = [
     label: 'Codex CLI',
     command: 'codex',
     suggestedModels: [],
+    supportsRepositoryAccess: false,
     buildArgs: model => [
       'exec',
       '--skip-git-repo-check',
@@ -68,6 +75,7 @@ export const AIAgents: ReadonlyArray<IAIAgent> = [
     label: 'Gemini CLI',
     command: 'gemini',
     suggestedModels: [],
+    supportsRepositoryAccess: false,
     buildArgs: model => [
       '--skip-trust',
       '--approval-mode',
@@ -348,6 +356,22 @@ export function getSelectedReviewPrompt(
 ): IReviewPrompt {
   const prompts = getReviewPrompts(settings)
   return prompts.find(p => p.id === settings.promptId) ?? prompts[0]
+}
+
+/** Whether a review with these settings runs inside the repository. */
+export function usesRepositoryAccess(settings: IAIAnalysisSettings): boolean {
+  return (
+    settings.repositoryAccess &&
+    getAIAgent(settings.agent).supportsRepositoryAccess
+  )
+}
+
+/**
+ * Whether a model name is safe to pass to an agent. It is typed by the user and
+ * ends up on a command line, where Windows runs it through a shell.
+ */
+export function isValidModelName(model: string): boolean {
+  return /^[\w.:/@\[\]-]*$/.test(model)
 }
 
 export function getSelectedModel(settings: IAIAnalysisSettings): string {

@@ -205,6 +205,12 @@ export class CommitList extends React.Component<
   ICommitListState
 > {
   private commitsHash = memoize(makeCommitsHash, arrayEquals)
+  private getCommitGraph = memoize(
+    (commitSHAs: ReadonlyArray<string>, lookup: Map<string, Commit>) =>
+      computeCommitGraph(
+        commitSHAs.map(sha => lookup.get(sha) ?? { sha, parentSHAs: [] })
+      )
+  )
   private commitIndexBySha = memoizeOne(
     (commitSHAs: ReadonlyArray<string>) =>
       new Map(commitSHAs.map((sha, index) => [sha, index]))
@@ -273,13 +279,6 @@ export class CommitList extends React.Component<
 
   private isLocalCommit = (sha: string) =>
     this.props.localCommitSHAs.includes(sha)
-
-  private getCommitGraph = memoize(
-    (commitSHAs: ReadonlyArray<string>, lookup: Map<string, Commit>) =>
-      computeCommitGraph(
-        commitSHAs.map(sha => lookup.get(sha) ?? { sha, parentSHAs: [] })
-      )
-  )
 
   private renderCommitWithGraph = (row: number) => {
     const { commitSHAs, commitLookup } = this.props
