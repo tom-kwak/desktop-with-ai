@@ -38,6 +38,7 @@ import { ExpandableCommitSummary } from './expandable-commit-summary'
 import { DiffHeader } from '../diff/diff-header'
 import { Account } from '../../models/account'
 import { Emoji } from '../../lib/emoji'
+import { AIAnalysisBar } from '../ai-analysis/ai-analysis-bar'
 
 interface ISelectedCommitsProps {
   readonly repository: Repository
@@ -298,11 +299,19 @@ export class SelectedCommits extends React.Component<
     const { selectedCommits, isContiguous } = this.props
 
     if (selectedCommits.length > 1 && !isContiguous) {
-      return this.renderMultipleCommitsBlankSlate()
+      return (
+        <AIAnalysisBar repository={this.props.repository} commits={[]}>
+          {this.renderMultipleCommitsBlankSlate()}
+        </AIAnalysisBar>
+      )
     }
 
     if (selectedCommits.length === 0) {
-      return <NoCommitSelected />
+      return (
+        <AIAnalysisBar repository={this.props.repository} commits={[]}>
+          <NoCommitSelected />
+        </AIAnalysisBar>
+      )
     }
 
     const className = this.state.isExpanded ? 'expanded' : 'collapsed'
@@ -311,6 +320,10 @@ export class SelectedCommits extends React.Component<
     return (
       <div id="history" className={className}>
         {this.renderCommitSummary(selectedCommits)}
+        <AIAnalysisBar
+          repository={this.props.repository}
+          commits={selectedCommits}
+        />
         <div className="commit-details">
           <Resizable
             width={commitSummaryWidth.value}
