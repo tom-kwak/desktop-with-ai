@@ -1,5 +1,7 @@
 @import '../../mixins';
 
+@import 'commit-graph';
+
 /** A React component holding the currently selected repository's history */
 #history {
   display: flex;
