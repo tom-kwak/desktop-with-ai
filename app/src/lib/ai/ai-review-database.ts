@@ -10,9 +10,16 @@ export interface IStoredReview extends IReviewHistoryEntry {
   readonly size: number
 }
 
-/** The AI reviews saved on this machine, for all repositories. */
+/** One set of settings, see `ai-settings` for what `key` and `value` hold. */
+export interface IStoredSettings {
+  readonly key: string
+  readonly value: unknown
+}
+
+/** The AI reviews and their settings saved on this machine. */
 export class AIReviewDatabase extends BaseDatabase {
   public declare reviews: Dexie.Table<IStoredReview, string>
+  public declare settings: Dexie.Table<IStoredSettings, string>
 
   public constructor(name: string, schemaVersion?: number) {
     super(name, schemaVersion)
@@ -21,5 +28,15 @@ export class AIReviewDatabase extends BaseDatabase {
       reviews:
         'id, repositoryKey, [repositoryKey+inputHash], [repositoryKey+createdAt], createdAt, size',
     })
+
+    this.conditionalVersion(2, { settings: 'key' })
   }
+}
+
+let defaultDatabase: AIReviewDatabase | null = null
+
+/** The database the app uses, opened on first use. */
+export function getAIReviewDatabase(): AIReviewDatabase {
+  defaultDatabase ??= new AIReviewDatabase('AIReviewDatabase')
+  return defaultDatabase
 }

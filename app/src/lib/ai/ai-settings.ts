@@ -1,7 +1,9 @@
 import { isRecord } from '../is-record'
+import { AIReviewDatabase, getAIReviewDatabase } from './ai-review-database'
 import { StoredRepository, getRepositoryStorageKeys } from './repository-key'
 
-const StorageKey = 'ai-analysis-settings'
+/** Where settings were kept before they moved to the database. */
+const LocalStorageKey = 'ai-analysis-settings'
 
 /** Agents (local CLIs) that can run the review. */
 export type AIAgentId = 'claude' | 'codex' | 'gemini'
@@ -95,7 +97,10 @@ const DefaultLanguage = 'Korean'
 
 export const DefaultReviewPromptId = 'default'
 
-/** The built-in review prompt. It can be selected but not edited or deleted. */
+/**
+ * The built-in review prompt. It can't be deleted, but its text can be replaced
+ * through `defaultPromptText`.
+ */
 export const DefaultReviewPrompt: IReviewPrompt = {
   id: DefaultReviewPromptId,
   name: 'Default',
@@ -115,6 +120,8 @@ export interface IAIAnalysisSettings {
   readonly promptId: string
   /** Review prompts created by the user. */
   readonly customPrompts: ReadonlyArray<IReviewPrompt>
+  /** The user's text for the default prompt; undefined for the built-in one. */
+  readonly defaultPromptText?: string
   /**
    * Whether the agent may read the repository's files, not just the diff, to
    * understand the code around a change.
@@ -130,54 +137,115 @@ export const DefaultAIAnalysisSettings: IAIAnalysisSettings = {
   repositoryAccess: false,
 }
 
-const ProjectStorageKeyPrefix = `${StorageKey}:project:`
+const GlobalSettingsKey = 'global'
+const ProjectSettingsKeyPrefix = 'project:'
 
-function readSettings(key: string): IAIAnalysisSettings | null {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '')
-    return isRecord(parsed) ? sanitize(parsed) : null
-  } catch {
-    return null
+const LocalStorageProjectKeyPrefix = `${LocalStorageKey}:project:`
+
+/** Moves settings saved by earlier versions out of local storage. */
+async function importFromLocalStorage(db: AIReviewDatabase) {
+  const keys: string[] = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (
+      key === LocalStorageKey ||
+      key?.startsWith(LocalStorageProjectKeyPrefix)
+    ) {
+      keys.push(key)
+    }
+  }
+
+  for (const key of keys) {
+    const storedKey =
+      key === LocalStorageKey
+        ? GlobalSettingsKey
+        : `${ProjectSettingsKeyPrefix}${key.slice(
+            LocalStorageProjectKeyPrefix.length
+          )}`
+
+    let value: unknown = null
+    try {
+      value = JSON.parse(localStorage.getItem(key) ?? '')
+    } catch {
+      // Unreadable settings are dropped, like when loading them.
+    }
+
+    if (isRecord(value) && (await db.settings.get(storedKey)) === undefined) {
+      await db.settings.put({ key: storedKey, value })
+    }
+    localStorage.removeItem(key)
   }
 }
 
-/** The settings used by every project that has no settings of its own. */
-export function loadGlobalAIAnalysisSettings(): IAIAnalysisSettings {
-  return readSettings(StorageKey) ?? DefaultAIAnalysisSettings
+async function readSettings(
+  db: AIReviewDatabase,
+  key: string
+): Promise<IAIAnalysisSettings | null> {
+  const stored = await db.settings.get(key)
+  return isRecord(stored?.value) ? sanitize(stored.value) : null
 }
 
-export function saveGlobalAIAnalysisSettings(settings: IAIAnalysisSettings) {
-  localStorage.setItem(StorageKey, JSON.stringify(settings))
+/**
+ * A blank default prompt, or one that is the same as the built-in text, isn't
+ * a change, so it goes back to following the built-in text.
+ */
+function normalize(settings: IAIAnalysisSettings): IAIAnalysisSettings {
+  const text = settings.defaultPromptText
+  return text === undefined ||
+    text.trim() === '' ||
+    text === DefaultReviewPrompt.text
+    ? { ...settings, defaultPromptText: undefined }
+    : settings
+}
+
+/** The settings used by every project that has no settings of its own. */
+export async function loadGlobalAIAnalysisSettings(
+  db: AIReviewDatabase = getAIReviewDatabase()
+): Promise<IAIAnalysisSettings> {
+  await importFromLocalStorage(db)
+  return (
+    (await readSettings(db, GlobalSettingsKey)) ?? DefaultAIAnalysisSettings
+  )
+}
+
+export async function saveGlobalAIAnalysisSettings(
+  settings: IAIAnalysisSettings,
+  db: AIReviewDatabase = getAIReviewDatabase()
+) {
+  await db.settings.put({ key: GlobalSettingsKey, value: normalize(settings) })
 }
 
 /** Settings stored for one project, or null if it uses the global ones. */
-export function loadProjectAIAnalysisSettings(
-  repository: StoredRepository
-): IAIAnalysisSettings | null {
+export async function loadProjectAIAnalysisSettings(
+  repository: StoredRepository,
+  db: AIReviewDatabase = getAIReviewDatabase()
+): Promise<IAIAnalysisSettings | null> {
+  await importFromLocalStorage(db)
+
   const { current, legacy } = getRepositoryStorageKeys(repository)
   return (
-    readSettings(`${ProjectStorageKeyPrefix}${current}`) ??
-    readSettings(`${ProjectStorageKeyPrefix}${legacy}`)
+    (await readSettings(db, `${ProjectSettingsKeyPrefix}${current}`)) ??
+    (await readSettings(db, `${ProjectSettingsKeyPrefix}${legacy}`))
   )
 }
 
 /** Stores project settings; null removes them so the global ones apply. */
-export function saveProjectAIAnalysisSettings(
+export async function saveProjectAIAnalysisSettings(
   repository: StoredRepository,
-  settings: IAIAnalysisSettings | null
+  settings: IAIAnalysisSettings | null,
+  db: AIReviewDatabase = getAIReviewDatabase()
 ) {
   const { current, legacy } = getRepositoryStorageKeys(repository)
+  const key = `${ProjectSettingsKeyPrefix}${current}`
+
   if (settings === null) {
-    localStorage.removeItem(`${ProjectStorageKeyPrefix}${current}`)
+    await db.settings.delete(key)
   } else {
-    localStorage.setItem(
-      `${ProjectStorageKeyPrefix}${current}`,
-      JSON.stringify(settings)
-    )
+    await db.settings.put({ key, value: normalize(settings) })
   }
   // Settings found under the old path key now live under the current one.
   if (legacy !== current) {
-    localStorage.removeItem(`${ProjectStorageKeyPrefix}${legacy}`)
+    await db.settings.delete(`${ProjectSettingsKeyPrefix}${legacy}`)
   }
 }
 
@@ -188,13 +256,17 @@ export interface IEffectiveAIAnalysisSettings {
 }
 
 /** The settings to use for a project: its own if it has any, else the global ones. */
-export function loadEffectiveAIAnalysisSettings(
-  repository: StoredRepository
-): IEffectiveAIAnalysisSettings {
-  const project = loadProjectAIAnalysisSettings(repository)
+export async function loadEffectiveAIAnalysisSettings(
+  repository: StoredRepository,
+  db: AIReviewDatabase = getAIReviewDatabase()
+): Promise<IEffectiveAIAnalysisSettings> {
+  const project = await loadProjectAIAnalysisSettings(repository, db)
   return project !== null
     ? { settings: project, isProjectSpecific: true }
-    : { settings: loadGlobalAIAnalysisSettings(), isProjectSpecific: false }
+    : {
+        settings: await loadGlobalAIAnalysisSettings(db),
+        isProjectSpecific: false,
+      }
 }
 
 /**
@@ -207,6 +279,7 @@ export function getDefaultSettingsResetTo(
   return {
     ...DefaultAIAnalysisSettings,
     customPrompts: settings.customPrompts,
+    defaultPromptText: undefined,
   }
 }
 
@@ -222,6 +295,7 @@ export function getProjectSettingsResetTo(
   const inDefaults = new Set(defaults.customPrompts.map(p => p.id))
   return {
     ...defaults,
+    defaultPromptText: defaults.defaultPromptText,
     customPrompts: [
       ...defaults.customPrompts,
       ...project.customPrompts.filter(p => !inDefaults.has(p.id)),
@@ -229,21 +303,20 @@ export function getProjectSettingsResetTo(
   }
 }
 
-/** All selectable prompts, built-in first. */
+/** All selectable prompts, the default one first. */
 export function getReviewPrompts(
   settings: IAIAnalysisSettings
 ): ReadonlyArray<IReviewPrompt> {
-  return [DefaultReviewPrompt, ...settings.customPrompts]
+  const text = settings.defaultPromptText ?? DefaultReviewPrompt.text
+  return [{ ...DefaultReviewPrompt, text }, ...settings.customPrompts]
 }
 
-/** The selected prompt, falling back to the built-in one if it was removed. */
+/** The selected prompt, falling back to the default one if it was removed. */
 export function getSelectedReviewPrompt(
   settings: IAIAnalysisSettings
 ): IReviewPrompt {
-  return (
-    getReviewPrompts(settings).find(p => p.id === settings.promptId) ??
-    DefaultReviewPrompt
-  )
+  const prompts = getReviewPrompts(settings)
+  return prompts.find(p => p.id === settings.promptId) ?? prompts[0]
 }
 
 export function getSelectedModel(settings: IAIAnalysisSettings): string {
@@ -282,6 +355,10 @@ function sanitize(raw: Record<string, unknown>): IAIAnalysisSettings {
     promptId:
       typeof raw.promptId === 'string' ? raw.promptId : DefaultReviewPromptId,
     customPrompts,
+    defaultPromptText:
+      typeof raw.defaultPromptText === 'string'
+        ? raw.defaultPromptText
+        : undefined,
     repositoryAccess: raw.repositoryAccess === true,
   }
 }

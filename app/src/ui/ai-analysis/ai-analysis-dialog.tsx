@@ -17,6 +17,7 @@ import {
   saveReview,
 } from '../../lib/ai/ai-review-history'
 import {
+  IEffectiveAIAnalysisSettings,
   getAIAgent,
   getSelectedModel,
   getSelectedReviewPrompt,
@@ -48,6 +49,8 @@ interface IAIAnalysisDialogState {
   readonly isFromHistory: boolean
   /** Whether the review just run couldn't be kept in the history. */
   readonly isNotSaved: boolean
+  /** The settings used for new reviews, once they are loaded. */
+  readonly effective: IEffectiveAIAnalysisSettings | null
 }
 
 /**
@@ -62,9 +65,7 @@ export class AIAnalysisDialog extends React.Component<
 > {
   private abortController = new AbortController()
   private input: IAIAnalysisInput | null = null
-  private readonly effective = loadEffectiveAIAnalysisSettings(
-    this.props.repository
-  )
+  private effectiveLoad: Promise<IEffectiveAIAnalysisSettings> | null = null
 
   public constructor(props: IAIAnalysisDialogProps) {
     super(props)
@@ -74,6 +75,7 @@ export class AIAnalysisDialog extends React.Component<
       selectedId: null,
       isFromHistory: false,
       isNotSaved: false,
+      effective: null,
     }
   }
 
@@ -98,6 +100,14 @@ export class AIAnalysisDialog extends React.Component<
     return this.abortController.signal
   }
 
+  /** The settings stay the same for as long as the dialog is open. */
+  private getEffective(): Promise<IEffectiveAIAnalysisSettings> {
+    this.effectiveLoad ??= loadEffectiveAIAnalysisSettings(
+      this.props.repository
+    )
+    return this.effectiveLoad
+  }
+
   private async getInput(): Promise<IAIAnalysisInput> {
     this.input ??= await this.props.getInput()
     return this.input
@@ -108,7 +118,7 @@ export class AIAnalysisDialog extends React.Component<
    * settings: when the agent can read the repository, the state of its files.
    */
   private async getConditionKey(): Promise<string> {
-    const { settings } = this.effective
+    const { settings } = await this.getEffective()
     const repositoryState = settings.repositoryAccess
       ? await getRepositoryStateKey(this.props.repository)
       : null
@@ -120,6 +130,12 @@ export class AIAnalysisDialog extends React.Component<
     const { signal } = this.abortController
 
     try {
+      const effective = await this.getEffective()
+      if (signal.aborted) {
+        return
+      }
+      this.setState({ effective })
+
       const input = await this.getInput()
       const history = await loadReviewHistory(
         this.props.repository,
@@ -153,13 +169,14 @@ export class AIAnalysisDialog extends React.Component<
     const signal = this.startRun()
 
     try {
+      const { settings } = await this.getEffective()
       const input = await this.getInput()
       // Taken before the agent starts, so the review is filed under the state
       // of the repository it was given.
       const conditionKey = await this.getConditionKey()
       const text = await analyzeWithAgent(
         input,
-        this.effective.settings,
+        settings,
         this.props.repository.path,
         signal
       )
@@ -170,7 +187,7 @@ export class AIAnalysisDialog extends React.Component<
       const { entry, saved } = await saveReview(
         this.props.repository,
         input,
-        this.effective.settings,
+        settings,
         conditionKey,
         text,
         this.props.subject
@@ -217,8 +234,12 @@ export class AIAnalysisDialog extends React.Component<
   }
 
   private renderSummary() {
-    const { settings, isProjectSpecific } = this.effective
-    const { history, selectedId, isFromHistory } = this.state
+    const { effective, history, selectedId, isFromHistory } = this.state
+    if (effective === null) {
+      return null
+    }
+
+    const { settings, isProjectSpecific } = effective
     const entry = history.find(h => h.id === selectedId)
 
     // Describe the review shown, which may have been made with other settings.

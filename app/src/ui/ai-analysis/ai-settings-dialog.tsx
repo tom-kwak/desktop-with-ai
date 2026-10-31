@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Dialog, DialogContent, DialogFooter } from '../dialog'
+import { Dialog, DialogContent, DialogError, DialogFooter } from '../dialog'
 import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
 import { Select } from '../lib/select'
 import { TextBox } from '../lib/text-box'
@@ -11,7 +11,7 @@ import { Repository } from '../../models/repository'
 import {
   AIAgentId,
   AIAgents,
-  DefaultReviewPrompt,
+  DefaultAIAnalysisSettings,
   DefaultReviewPromptId,
   IAIAnalysisSettings,
   IReviewPrompt,
@@ -19,6 +19,7 @@ import {
   getDefaultSettingsResetTo,
   getProjectSettingsResetTo,
   getReviewPrompts,
+  getSelectedReviewPrompt,
   loadGlobalAIAnalysisSettings,
   loadProjectAIAnalysisSettings,
   saveGlobalAIAnalysisSettings,
@@ -38,6 +39,10 @@ interface IAISettingsDialogState {
   readonly global: IAIAnalysisSettings
   /** Null when the project has no settings of its own. */
   readonly project: IAIAnalysisSettings | null
+  /** Whether the settings are still being read from the database. */
+  readonly isLoading: boolean
+  /** Set if the settings couldn't be read or saved. */
+  readonly errorMessage: string | null
 }
 
 /**
@@ -48,15 +53,49 @@ export class AISettingsDialog extends React.Component<
   IAISettingsDialogProps,
   IAISettingsDialogState
 > {
+  private unmounted = false
+
   public constructor(props: IAISettingsDialogProps) {
     super(props)
-    const project = loadProjectAIAnalysisSettings(props.repository)
     this.state = {
-      // Without settings of its own a project just uses the defaults, so
-      // those are what there is to edit.
-      scope: project !== null ? 'project' : 'global',
-      global: loadGlobalAIAnalysisSettings(),
-      project,
+      scope: 'global',
+      global: DefaultAIAnalysisSettings,
+      project: null,
+      isLoading: true,
+      errorMessage: null,
+    }
+  }
+
+  public async componentDidMount() {
+    try {
+      const { repository } = this.props
+      const [global, project] = await Promise.all([
+        loadGlobalAIAnalysisSettings(),
+        loadProjectAIAnalysisSettings(repository),
+      ])
+      if (!this.unmounted) {
+        this.setState({
+          // Without settings of its own a project just uses the defaults, so
+          // those are what there is to edit.
+          scope: project !== null ? 'project' : 'global',
+          global,
+          project,
+          isLoading: false,
+        })
+      }
+    } catch (e) {
+      this.showError(e)
+    }
+  }
+
+  public componentWillUnmount() {
+    this.unmounted = true
+  }
+
+  private showError(e: unknown) {
+    if (!this.unmounted) {
+      const errorMessage = e instanceof Error ? e.message : String(e)
+      this.setState({ errorMessage, isLoading: false })
     }
   }
 
@@ -122,7 +161,15 @@ export class AISettingsDialog extends React.Component<
   }
 
   private onPromptTextChanged = (text: string) => {
-    this.updateSelectedPrompt({ text })
+    if (getSelectedReviewPrompt(this.shown).id === DefaultReviewPromptId) {
+      this.update({ defaultPromptText: text })
+    } else {
+      this.updateSelectedPrompt({ text })
+    }
+  }
+
+  private onRestoreDefaultPrompt = () => {
+    this.update({ defaultPromptText: undefined })
   }
 
   private onAddPrompt = () => {
@@ -130,8 +177,8 @@ export class AISettingsDialog extends React.Component<
     const prompt: IReviewPrompt = {
       id: `custom-${Date.now()}`,
       name: `Custom ${customPrompts.length + 1}`,
-      // Start from the built-in prompt so the output format is kept.
-      text: DefaultReviewPrompt.text,
+      // Start from the default prompt so the output format is kept.
+      text: getReviewPrompts(this.shown)[0].text,
     }
     this.update({
       customPrompts: [...customPrompts, prompt],
@@ -166,10 +213,17 @@ export class AISettingsDialog extends React.Component<
     this.setState({ scope: 'global' })
   }
 
-  private onSubmit = () => {
+  private onSubmit = async () => {
     const { global, project } = this.state
-    saveGlobalAIAnalysisSettings(global)
-    saveProjectAIAnalysisSettings(this.props.repository, project)
+
+    try {
+      await saveGlobalAIAnalysisSettings(global)
+      await saveProjectAIAnalysisSettings(this.props.repository, project)
+    } catch (e) {
+      this.showError(e)
+      return
+    }
+
     this.props.onDismissed()
   }
 
@@ -256,8 +310,7 @@ export class AISettingsDialog extends React.Component<
   private renderPrompt() {
     const settings = this.shown
     const prompts = getReviewPrompts(settings)
-    const selected =
-      prompts.find(p => p.id === settings.promptId) ?? DefaultReviewPrompt
+    const selected = getSelectedReviewPrompt(settings)
     const isBuiltIn = selected.id === DefaultReviewPromptId
     const isEditable = this.isEditable
 
@@ -287,7 +340,7 @@ export class AISettingsDialog extends React.Component<
           label="Prompt"
           value={selected.text}
           rows={9}
-          disabled={isBuiltIn || !isEditable}
+          disabled={!isEditable}
           onValueChanged={this.onPromptTextChanged}
         />
         <div className="ai-settings-prompt-actions">
@@ -300,49 +353,69 @@ export class AISettingsDialog extends React.Component<
           >
             Delete prompt
           </Button>
+          {isBuiltIn && settings.defaultPromptText !== undefined && (
+            <Button
+              onClick={this.onRestoreDefaultPrompt}
+              disabled={!isEditable}
+            >
+              Restore built-in prompt
+            </Button>
+          )}
+        </div>
+      </>
+    )
+  }
+
+  private renderForm() {
+    return (
+      <>
+        {this.renderScope()}
+        <Select
+          label="Agent"
+          value={this.shown.agent}
+          disabled={!this.isEditable}
+          onChange={this.onAgentChanged}
+        >
+          {AIAgents.map(a => (
+            <option key={a.id} value={a.id}>
+              {a.label}
+            </option>
+          ))}
+        </Select>
+        {this.renderModel()}
+        {this.renderRepositoryAccess()}
+        {this.renderPrompt()}
+        <div className="ai-settings-prompt-actions">
+          <Button onClick={this.onResetToDefaults} disabled={!this.isEditable}>
+            {this.state.scope === 'project'
+              ? 'Reset to defaults'
+              : 'Reset to built-in defaults'}
+          </Button>
         </div>
       </>
     )
   }
 
   public render() {
+    const { isLoading, errorMessage } = this.state
+
     return (
       <Dialog
         id="ai-settings"
         title={__DARWIN__ ? 'AI Review Settings' : 'AI review settings'}
         onSubmit={this.onSubmit}
         onDismissed={this.props.onDismissed}
+        loading={isLoading}
       >
+        {errorMessage !== null && <DialogError>{errorMessage}</DialogError>}
         <DialogContent>
-          {this.renderScope()}
-          <Select
-            label="Agent"
-            value={this.shown.agent}
-            disabled={!this.isEditable}
-            onChange={this.onAgentChanged}
-          >
-            {AIAgents.map(a => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </Select>
-          {this.renderModel()}
-          {this.renderRepositoryAccess()}
-          {this.renderPrompt()}
-          <div className="ai-settings-prompt-actions">
-            <Button
-              onClick={this.onResetToDefaults}
-              disabled={!this.isEditable}
-            >
-              {this.state.scope === 'project'
-                ? 'Reset to defaults'
-                : 'Reset to built-in defaults'}
-            </Button>
-          </div>
+          {isLoading ? <p>Loading settings…</p> : this.renderForm()}
         </DialogContent>
         <DialogFooter>
-          <OkCancelButtonGroup okButtonText="Save" />
+          <OkCancelButtonGroup
+            okButtonText="Save"
+            okButtonDisabled={isLoading || errorMessage !== null}
+          />
         </DialogFooter>
       </Dialog>
     )

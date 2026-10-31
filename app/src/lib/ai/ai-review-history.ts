@@ -13,7 +13,11 @@ import {
   IReviewedBranch,
   IReviewedCommit,
 } from './ai-analysis'
-import { AIReviewDatabase, IStoredReview } from './ai-review-database'
+import {
+  AIReviewDatabase,
+  IStoredReview,
+  getAIReviewDatabase,
+} from './ai-review-database'
 import { StoredRepository, getRepositoryStorageKeys } from './repository-key'
 
 /** Where reviews were kept before they moved to the database. */
@@ -33,13 +37,6 @@ export interface IReviewHistoryLimits {
 const DefaultLimits: IReviewHistoryLimits = {
   maxReviewsPerRepository: 500,
   maxStoredCharacters: 50_000_000,
-}
-
-let defaultDatabase: AIReviewDatabase | null = null
-
-function getDefaultDatabase(): AIReviewDatabase {
-  defaultDatabase ??= new AIReviewDatabase('AIReviewDatabase')
-  return defaultDatabase
 }
 
 /** A review that was run and saved. */
@@ -202,7 +199,7 @@ function newestFirst(reviews: ReadonlyArray<IStoredReview>) {
 /** Every saved review of a repository, newest first. */
 export async function loadAllReviewHistory(
   repository: StoredRepository,
-  db: AIReviewDatabase = getDefaultDatabase()
+  db: AIReviewDatabase = getAIReviewDatabase()
 ): Promise<ReadonlyArray<IReviewHistoryEntry>> {
   const repositoryKey = await prepare(repository, db)
   return newestFirst(
@@ -214,7 +211,7 @@ export async function loadAllReviewHistory(
 export async function loadReviewHistory(
   repository: StoredRepository,
   inputHash: string,
-  db: AIReviewDatabase = getDefaultDatabase()
+  db: AIReviewDatabase = getAIReviewDatabase()
 ): Promise<ReadonlyArray<IReviewHistoryEntry>> {
   const repositoryKey = await prepare(repository, db)
   return newestFirst(
@@ -279,7 +276,7 @@ export async function saveReview(
   conditionKey: string,
   text: string,
   subject: string,
-  db: AIReviewDatabase = getDefaultDatabase(),
+  db: AIReviewDatabase = getAIReviewDatabase(),
   limits: IReviewHistoryLimits = DefaultLimits
 ): Promise<ISavedReview> {
   const entry: IReviewHistoryEntry = {
@@ -315,7 +312,7 @@ export async function saveReview(
 /** Removes one saved review. */
 export async function deleteReview(
   id: string,
-  db: AIReviewDatabase = getDefaultDatabase()
+  db: AIReviewDatabase = getAIReviewDatabase()
 ) {
   await db.reviews.delete(id)
 }
