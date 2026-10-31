@@ -56,7 +56,7 @@ export function buildAnalysisPrompt(
 
 /**
  * Runs the configured agent CLI in headless mode and resolves with its
- * analysis. It uses the user's existing login for that CLI, so no API key is
+ * review. It uses the user's existing login for that CLI, so no API key is
  * needed. The prompt is passed on stdin to avoid argument quoting and length
  * limits.
  */
@@ -91,10 +91,13 @@ export function analyzeWithAgent(
   return new Promise<string>((resolve, reject) => {
     let stdout = ''
     let stderr = ''
-    const timer = setTimeout(() => {
-      child.kill()
-      reject(new Error(`${agent.label} did not respond in time`))
-    }, repositoryAccess ? RepositoryAccessTimeoutMs : TimeoutMs)
+    const timer = setTimeout(
+      () => {
+        child.kill()
+        reject(new Error(`${agent.label} did not respond in time`))
+      },
+      repositoryAccess ? RepositoryAccessTimeoutMs : TimeoutMs
+    )
 
     child.stdout.setEncoding('utf8').on('data', d => (stdout += d))
     child.stderr.setEncoding('utf8').on('data', d => (stderr += d))

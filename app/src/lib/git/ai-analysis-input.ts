@@ -25,7 +25,7 @@ function formatCommitLog(commits: ReadonlyArray<Commit>): string {
 }
 
 /**
- * Builds the commit log and patch text sent to the AI analysis for the given
+ * Builds the commit log and patch text sent to the AI review for the given
  * commits (ordered as selected in the history list).
  */
 export async function getAIAnalysisInput(
@@ -115,7 +115,7 @@ export interface IBranchReviewOptions {
 }
 
 /**
- * Builds the analysis input for everything the current branch changes
+ * Builds the review input for everything the current branch changes
  * compared to `baseRef` (the commits since their merge base, like a pull
  * request), optionally together with uncommitted changes to tracked files.
  */
@@ -124,7 +124,9 @@ export async function getBranchAnalysisInput(
   { baseRef, includeUncommitted }: IBranchReviewOptions
 ): Promise<IAIAnalysisInput> {
   if (baseRef.trim() === '' || !(await refExists(repository, baseRef))) {
-    throw new Error(`Base branch '${baseRef}' was not found in this repository.`)
+    throw new Error(
+      `Base branch '${baseRef}' was not found in this repository.`
+    )
   }
 
   // For `git log`, `A..B` lists the commits only on the branch, while `A...B`

@@ -85,7 +85,9 @@ export class AISettingsDialog extends React.Component<
 
   private onProjectSpecificChanged = (e: React.FormEvent<HTMLInputElement>) => {
     // Start from the global settings so nothing changes until edited.
-    this.setState({ project: e.currentTarget.checked ? this.state.global : null })
+    this.setState({
+      project: e.currentTarget.checked ? this.state.global : null,
+    })
   }
 
   private onAgentChanged = (e: React.FormEvent<HTMLSelectElement>) => {
@@ -140,7 +142,9 @@ export class AISettingsDialog extends React.Component<
     })
   }
 
-  private onRepositoryAccessChanged = (e: React.FormEvent<HTMLInputElement>) => {
+  private onRepositoryAccessChanged = (
+    e: React.FormEvent<HTMLInputElement>
+  ) => {
     this.update({ repositoryAccess: e.currentTarget.checked })
   }
 
@@ -164,8 +168,14 @@ export class AISettingsDialog extends React.Component<
 
     return (
       <>
-        <Select label="Settings for" value={scope} onChange={this.onScopeChanged}>
-          <option value="project">This project ({this.props.repository.name})</option>
+        <Select
+          label="Settings for"
+          value={scope}
+          onChange={this.onScopeChanged}
+        >
+          <option value="project">
+            This project ({this.props.repository.name})
+          </option>
           <option value="global">All projects (default)</option>
         </Select>
         {scope === 'project' && (
@@ -288,7 +298,7 @@ export class AISettingsDialog extends React.Component<
     return (
       <Dialog
         id="ai-settings"
-        title={__DARWIN__ ? 'AI Analysis Settings' : 'AI analysis settings'}
+        title={__DARWIN__ ? 'AI Review Settings' : 'AI review settings'}
         onSubmit={this.onSubmit}
         onDismissed={this.props.onDismissed}
       >

@@ -14,7 +14,7 @@ import {
 interface IAIAnalysisDialogProps {
   readonly repository: Repository
   readonly title: string
-  /** What is being analyzed, e.g. "3 commits". */
+  /** What is being reviewed, e.g. "3 commits". */
   readonly subject: string
   /** Gathers the commit log and patch to send to the agent. */
   readonly getInput: () => Promise<IAIAnalysisInput>
@@ -32,7 +32,7 @@ interface IAIAnalysisDialogState {
 
 /**
  * Runs the configured agent over the input from `getInput` and shows the
- * resulting analysis.
+ * resulting review.
  */
 export class AIAnalysisDialog extends React.Component<
   IAIAnalysisDialogProps,
@@ -98,7 +98,7 @@ export class AIAnalysisDialog extends React.Component<
       case 'loading':
         return (
           <p>
-            <Loading /> Analyzing {this.props.subject}…
+            <Loading /> Reviewing {this.props.subject}…
           </p>
         )
       case 'error':

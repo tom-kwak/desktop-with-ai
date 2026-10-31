@@ -31,7 +31,7 @@ interface IAIAnalysisBarState {
 
 /**
  * The buttons of the history view that open the AI settings, the branch
- * review and the analysis of the selected commits, plus the dialogs they open.
+ * review and the review of the selected commits, plus the dialogs they open.
  */
 export class AIAnalysisBar extends React.Component<
   IAIAnalysisBarProps,
@@ -63,7 +63,7 @@ export class AIAnalysisBar extends React.Component<
           <DialogStackContext.Provider value={{ isTopMost: true }}>
             <AIAnalysisDialog
               repository={repository}
-              title={__DARWIN__ ? 'AI Commit Analysis' : 'AI commit analysis'}
+              title={__DARWIN__ ? 'AI Commit Review' : 'AI commit review'}
               subject={`${commits.length} commit(s)`}
               getInput={() => getAIAnalysisInput(repository, commits)}
               onDismissed={this.onCloseDialog}
@@ -99,8 +99,8 @@ export class AIAnalysisBar extends React.Component<
       <div className="ai-analysis-bar">
         <Button
           onClick={this.onOpenSettings}
-          tooltip="AI analysis settings"
-          ariaLabel="AI analysis settings"
+          tooltip="AI review settings"
+          ariaLabel="AI review settings"
         >
           <Octicon symbol={octicons.gear} />
         </Button>
@@ -108,7 +108,7 @@ export class AIAnalysisBar extends React.Component<
           <Octicon symbol={octicons.gitBranch} /> Review branch
         </Button>
         <Button onClick={this.onOpenCommits} disabled={count === 0}>
-          <Octicon symbol={octicons.copilot} /> Analyze{' '}
+          <Octicon symbol={octicons.copilot} /> Review{' '}
           {count > 0 ? `${count} commit${count > 1 ? 's' : ''}` : 'commits'}
         </Button>
         {this.renderDialog()}

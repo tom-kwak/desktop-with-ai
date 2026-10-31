@@ -2,7 +2,7 @@ import { isRecord } from '../is-record'
 
 const StorageKey = 'ai-analysis-settings'
 
-/** Agents (local CLIs) that can run the analysis. */
+/** Agents (local CLIs) that can run the review. */
 export type AIAgentId = 'claude' | 'codex' | 'gemini'
 
 export interface IAIAgent {
@@ -82,7 +82,7 @@ export function getAIAgent(id: AIAgentId): IAIAgent {
   return AIAgents.find(a => a.id === id) ?? AIAgents[0]
 }
 
-/** A named review prompt describing how the commits should be analyzed. */
+/** A named review prompt describing how the commits should be reviewed. */
 export interface IReviewPrompt {
   readonly id: string
   readonly name: string
@@ -98,7 +98,7 @@ export const DefaultReviewPromptId = 'default'
 export const DefaultReviewPrompt: IReviewPrompt = {
   id: DefaultReviewPromptId,
   name: 'Default',
-  text: `Write the analysis in ${DefaultLanguage} using Markdown with these sections:
+  text: `Write the review in ${DefaultLanguage} using Markdown with these sections:
 ## 요약  - what the change does and why, in 2-4 sentences
 ## 주요 변경 - bullet list grouped by file or concern
 ## 위험 요소 - behavior changes, regressions, missing tests or edge cases
