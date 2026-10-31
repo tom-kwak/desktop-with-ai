@@ -13,6 +13,18 @@ dialog#ai-analysis {
     color: var(--text-secondary-color);
   }
 
+  .ai-review-history {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing);
+
+    // The history list takes the room the button doesn't need.
+    .select-component {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
   .ai-analysis-error {
     color: var(--error-color);
   }
