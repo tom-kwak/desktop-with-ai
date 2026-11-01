@@ -6,6 +6,14 @@
 
 > 개인 포크이며 GitHub의 공식 제품이 아닙니다. 문제는 GitHub Desktop이 아니라 [이 저장소](https://github.com/tom-kwak/desktop-with-ai/issues)에 알려 주세요.
 
+## Quick Start
+
+Apple Silicon Mac에서 터미널에 붙여 넣으면 최신 버전이 설치됩니다. 앱이 실행 중이면 먼저 종료하세요.
+
+```bash
+curl -L https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip -o /tmp/ReviewDesk.zip && unzip -oq /tmp/ReviewDesk.zip -d /Applications && xattr -dr com.apple.quarantine /Applications/ReviewDesk.app
+```
+
 ## 추가한 기능
 
 - **AI 리뷰**: History 위쪽 바에서 선택한 커밋(`Review N commits`)이나 현재 브랜치(`Review branch`)를 리뷰합니다. 결과는 요약, 주요 변경, 위험 요소, 커밋 품질로 정리됩니다. API 키 없이 컴퓨터에 설치되고 로그인된 에이전트 CLI를 실행합니다.
@@ -16,15 +24,9 @@
 - **리뷰 설정**: 톱니바퀴 버튼에서 에이전트, 모델, 저장소 읽기, 프롬프트(수정, 추가)를 정합니다. 전체 기본값과 프로젝트별 설정이 따로 있습니다.
 - **커밋 그래프**: History 목록 왼쪽에 브랜치 흐름을 그리고, 커밋을 선택하면 같은 브랜치의 커밋을 강조합니다. 브랜치 이름 칩과 현재 브랜치 링도 표시됩니다.
 
-## 설치
+## 설치 참고
 
-Apple Silicon Mac 전용입니다. 터미널에서 한 줄로 설치합니다. 앱이 실행 중이면 먼저 종료하세요.
-
-```bash
-curl -L https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip -o /tmp/ReviewDesk.zip && unzip -oq /tmp/ReviewDesk.zip -d /Applications && xattr -dr com.apple.quarantine /Applications/ReviewDesk.app
-```
-
-최신 버전을 받아 `/Applications`에 설치하고, 공증을 받지 않은 앱에 macOS가 띄우는 "확인되지 않은 개발자" 경고를 건너뛰도록 격리 표시(`xattr`)를 지웁니다. 업데이트할 때도 같은 명령을 씁니다.
+Apple Silicon Mac 전용입니다. 위 Quick Start 명령은 최신 버전을 받아 `/Applications`에 설치하고, 공증을 받지 않은 앱에 macOS가 띄우는 "확인되지 않은 개발자" 경고를 건너뛰도록 격리 표시(`xattr`)를 지웁니다. 업데이트할 때도 같은 명령을 씁니다.
 
 - 직접 설치하려면 [zip](https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip)의 압축을 풀고 `ReviewDesk.app`을 응용 프로그램 폴더로 옮긴 뒤, 막히면 시스템 설정의 개인정보 보호 및 보안에서 허용하세요.
 - 실행 중에는 앱을 옮기지 마세요. 옮기면 내장 Git을 찾지 못합니다. 옮겼다면 앱을 종료하고 다시 실행하세요.
