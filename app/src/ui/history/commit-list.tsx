@@ -28,7 +28,7 @@ import { getAvatarUsersForCommit, IAvatarUser } from '../../models/avatar'
 import { formatDate } from '../../lib/format-date'
 import { Avatar } from '../lib/avatar'
 import { Octicon } from '../octicons'
-import { CommitGraphCell } from './commit-graph-cell'
+import { CommitGraphCell, getColor } from './commit-graph-cell'
 import { computeCommitGraph } from '../../lib/commit-graph'
 import * as octicons from '../octicons/octicons.generated'
 
@@ -67,6 +67,12 @@ interface ICommitListProps {
 
   /** Whether to show how the commits branch and merge next to them. */
   readonly showCommitGraph?: boolean
+
+  /**
+   * The names of the branches that point at a commit, by the sha of the
+   * commit. Shown next to the commit when the graph is.
+   */
+  readonly branchTips?: ReadonlyMap<string, ReadonlyArray<string>>
 
   /** Data to be reordered via keyboard */
   readonly keyboardReorderData?: KeyboardInsertionData
@@ -284,12 +290,32 @@ export class CommitList extends React.Component<
     const { commitSHAs, commitLookup } = this.props
     const { rows, columnCount } = this.getCommitGraph(commitSHAs, commitLookup)
 
+    // The lane of the selected commit is the one to follow in the graph.
+    const selectedRow =
+      this.props.selectedSHAs.length === 1
+        ? this.rowForSHA(this.props.selectedSHAs[0])
+        : -1
+    const highlightedColor =
+      selectedRow === -1 ? undefined : rows[selectedRow].color
+    const isInSelectedLane = highlightedColor === rows[row].color
+
     return (
-      <div className="commit-with-graph">
+      <div
+        className={classNames('commit-with-graph', {
+          'in-selected-lane':
+            isInSelectedLane && highlightedColor !== undefined,
+        })}
+        style={
+          {
+            '--lane-color': getColor(rows[row].color),
+          } as React.CSSProperties
+        }
+      >
         <CommitGraphCell
           row={rows[row]}
           columnCount={columnCount}
           height={RowHeight}
+          highlightedColor={highlightedColor}
         />
         {this.renderCommit(row)}
       </div>
@@ -326,6 +352,11 @@ export class CommitList extends React.Component<
           unpushedTags.length
         )}
         commit={commit}
+        branchNames={
+          this.props.showCommitGraph
+            ? this.props.branchTips?.get(commit.sha)
+            : undefined
+        }
         emoji={this.props.emoji}
         isDraggable={
           this.props.isMultiCommitOperationInProgress === false &&
@@ -648,6 +679,8 @@ export class CommitList extends React.Component<
             commitLookupHash: this.commitsHash(this.getVisibleCommits()),
             tagsToPush: this.props.tagsToPush,
             shasToHighlight: this.props.shasToHighlight,
+            selectedSHAs: this.props.selectedSHAs,
+            branchTips: this.props.branchTips,
             preferAbsoluteDates: this.props.preferAbsoluteDates,
           }}
           setScrollTop={this.props.compareListScrollTop}

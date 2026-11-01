@@ -8,6 +8,12 @@
     flex: 1;
     min-width: 0;
   }
+
+  // Commits on the lane of the selected commit, which is drawn in
+  // `--lane-color`, get a stripe of it at the edge of the row.
+  &.in-selected-lane {
+    box-shadow: inset 3px 0 0 var(--lane-color);
+  }
 }
 
 .commit-graph-cell {

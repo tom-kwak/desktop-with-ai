@@ -7,6 +7,9 @@ const ColumnWidth = 10
 /** Columns past this share the last one, to leave room for the commit. */
 const MaxColumns = 6
 
+/** How visible the lanes are that aren't the highlighted one. */
+const DimmedOpacity = 0.25
+
 /** Colors that stay readable on the light and dark themes. */
 const Colors = [
   '#378ADD',
@@ -17,7 +20,7 @@ const Colors = [
   '#BA7517',
 ] as const
 
-const getColor = (color: number) => Colors[color % Colors.length]
+export const getColor = (color: number) => Colors[color % Colors.length]
 
 const getX = (column: number) =>
   (Math.min(column, MaxColumns - 1) + 0.5) * ColumnWidth
@@ -27,10 +30,22 @@ interface ICommitGraphCellProps {
   /** How many columns the graph has, so that all rows are equally wide. */
   readonly columnCount: number
   readonly height: number
+  /**
+   * The lane to emphasize, as one of the colors of the graph. Everything else
+   * is dimmed. Nothing is dimmed when it's undefined.
+   */
+  readonly highlightedColor?: number
 }
 
 /** The part of the commit graph that belongs to one row of the commit list. */
 export class CommitGraphCell extends React.PureComponent<ICommitGraphCellProps> {
+  private getOpacity(color: number) {
+    const { highlightedColor } = this.props
+    return highlightedColor === undefined || highlightedColor === color
+      ? 1
+      : DimmedOpacity
+  }
+
   private renderEdge(edge: ICommitGraphEdge, fromY: number, key: string) {
     const toY = fromY + this.props.height / 2
     const midY = (fromY + toY) / 2
@@ -42,6 +57,7 @@ export class CommitGraphCell extends React.PureComponent<ICommitGraphCellProps> 
         key={key}
         d={`M${fromX} ${fromY}C${fromX} ${midY} ${toX} ${midY} ${toX} ${toY}`}
         stroke={getColor(edge.color)}
+        opacity={this.getOpacity(edge.color)}
       />
     )
   }
@@ -68,12 +84,15 @@ export class CommitGraphCell extends React.PureComponent<ICommitGraphCellProps> 
             y1={0}
             y2={height}
             stroke={getColor(line.color)}
+            opacity={this.getOpacity(line.color)}
           />
         ))}
         {row.top.map((e, i) => this.renderEdge(e, 0, `top-${i}`))}
         {row.bottom.map((e, i) => this.renderEdge(e, y, `bottom-${i}`))}
-        <circle cx={x} cy={y} r={row.isMerge ? 4.5 : 3.5} fill={color} />
-        {row.isMerge && <circle cx={x} cy={y} r={1.5} fill="#ffffff" />}
+        <g opacity={this.getOpacity(row.color)}>
+          <circle cx={x} cy={y} r={row.isMerge ? 4.5 : 3.5} fill={color} />
+          {row.isMerge && <circle cx={x} cy={y} r={1.5} fill="#ffffff" />}
+        </g>
       </svg>
     )
   }

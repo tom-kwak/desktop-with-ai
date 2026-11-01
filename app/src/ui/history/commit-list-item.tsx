@@ -31,6 +31,8 @@ import { formatDate } from '../../lib/format-date'
 interface ICommitProps {
   readonly gitHubRepository: GitHubRepository | null
   readonly commit: Commit
+  /** Branches that point at this commit, shown as labels. */
+  readonly branchNames?: ReadonlyArray<string>
   readonly selectedCommits: ReadonlyArray<Commit>
   readonly emoji: Map<string, Emoji>
   readonly onRenderCommitDragElement?: (commit: Commit) => void
@@ -169,6 +171,7 @@ export class CommitListItem extends React.PureComponent<
                 <CommitAttribution avatarUsers={this.state.avatarUsers} />
                 {renderRelativeTime(date, this.props.preferAbsoluteDates)}
               </div>
+              {renderCommitListItemBranches(this.props.branchNames ?? [])}
             </div>
           </div>
           {this.renderCommitIndicators()}
@@ -245,6 +248,22 @@ function renderRelativeTime(date: Date, preferAbsoluteDates: boolean) {
         <RelativeTime date={date} tooltip={!enableAccessibleListToolTips()} />
       )}
     </>
+  )
+}
+
+function renderCommitListItemBranches(branches: ReadonlyArray<string>) {
+  if (branches.length === 0) {
+    return null
+  }
+
+  const [firstBranch] = branches
+  return (
+    <span className="branch-indicator" title={branches.join(', ')}>
+      <span className="branch-name">{firstBranch}</span>
+      {branches.length > 1 && (
+        <span className="branch-indicator-more">+{branches.length - 1}</span>
+      )}
+    </span>
   )
 }
 
