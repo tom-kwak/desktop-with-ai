@@ -3,7 +3,7 @@ name: ReviewDesk download page
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - 'website/**'
       - '.github/workflows/reviewdesk-pages.yml'
