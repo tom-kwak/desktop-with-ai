@@ -28,10 +28,8 @@ import { getAvatarUsersForCommit, IAvatarUser } from '../../models/avatar'
 import { formatDate } from '../../lib/format-date'
 import { Avatar } from '../lib/avatar'
 import { Octicon } from '../octicons'
-import { CommitGraphCell, getColor } from './commit-graph-cell'
-import { computeCommitGraph } from '../../lib/commit-graph'
-import { getBranchSegment } from '../../lib/commit-branch-segment'
 import * as octicons from '../octicons/octicons.generated'
+import { ICommitListGraph, renderCommitGraphRow } from './commit-graph-row'
 
 const RowHeight = 50
 
@@ -66,20 +64,8 @@ interface ICommitListProps {
   /** The message to display inside the list when no results are displayed */
   readonly emptyListMessage?: JSX.Element | string
 
-  /** Whether to show how the commits branch and merge next to them. */
-  readonly showCommitGraph?: boolean
-
-  /**
-   * The names of the branches that point at a commit, by the sha of the
-   * commit. Shown next to the commit when the graph is.
-   */
-  readonly branchTips?: ReadonlyMap<string, ReadonlyArray<string>>
-
-  /**
-   * The same for the local branches only, which decide what commits are
-   * considered to be made on the same branch as the selected one.
-   */
-  readonly localBranchTips?: ReadonlyMap<string, ReadonlyArray<string>>
+  /** Shows the commit graph next to the commits when it's there. */
+  readonly graph?: ICommitListGraph
 
   /** Data to be reordered via keyboard */
   readonly keyboardReorderData?: KeyboardInsertionData
@@ -212,32 +198,12 @@ interface ICommitListState {
   readonly reorderingMessage: string
 }
 
-/** A color that no lane has, to dim every lane of a row of the graph. */
-const NoLaneColor = -1
-
 /** A component which displays the list of commits. */
 export class CommitList extends React.Component<
   ICommitListProps,
   ICommitListState
 > {
   private commitsHash = memoize(makeCommitsHash, arrayEquals)
-  private getCommitGraph = memoize(
-    (commitSHAs: ReadonlyArray<string>, lookup: Map<string, Commit>) =>
-      computeCommitGraph(
-        commitSHAs.map(sha => lookup.get(sha) ?? { sha, parentSHAs: [] })
-      )
-  )
-  private getBranchSegment = memoizeOne(
-    (
-      sha: string | null,
-      commitSHAs: ReadonlyArray<string>,
-      lookup: Map<string, Commit>,
-      tips: ReadonlyMap<string, ReadonlyArray<string>> | undefined
-    ) =>
-      sha === null || tips === undefined
-        ? null
-        : getBranchSegment(sha, commitSHAs, lookup, tips)
-  )
   private commitIndexBySha = memoizeOne(
     (commitSHAs: ReadonlyArray<string>) =>
       new Map(commitSHAs.map((sha, index) => [sha, index]))
@@ -307,62 +273,17 @@ export class CommitList extends React.Component<
   private isLocalCommit = (sha: string) =>
     this.props.localCommitSHAs.includes(sha)
 
-  private getSelectedBranchSegment = () => {
-    const { selectedSHAs, commitSHAs, commitLookup, localBranchTips } =
-      this.props
-    return this.getBranchSegment(
-      selectedSHAs.length === 1 ? selectedSHAs[0] : null,
-      commitSHAs,
-      commitLookup,
-      localBranchTips
-    )
-  }
-
   private renderCommitWithGraph = (row: number) => {
-    const { commitSHAs, commitLookup } = this.props
-    const { rows, columnCount } = this.getCommitGraph(commitSHAs, commitLookup)
+    const { graph } = this.props
+    const content = this.renderCommit(row)
 
-    const segment = this.getSelectedBranchSegment()
-    let highlightedColor: number | undefined
-    let isHighlighted = false
-
-    if (segment !== null) {
-      // The commits made on the branch of the selected commit stand out, and
-      // so does their own lane, while the rest of the graph is dimmed.
-      isHighlighted = segment.shas.has(commitSHAs[row])
-      highlightedColor = isHighlighted ? rows[row].color : NoLaneColor
-    } else {
-      // The branch can't be told, so follow the lane of the selected commit.
-      const selectedRow =
-        this.props.selectedSHAs.length === 1
-          ? this.rowForSHA(this.props.selectedSHAs[0])
-          : -1
-      highlightedColor =
-        selectedRow === -1 ? undefined : rows[selectedRow].color
-      isHighlighted =
-        highlightedColor !== undefined && highlightedColor === rows[row].color
-    }
-
-    return (
-      <div
-        className={classNames('commit-with-graph', {
-          'in-selected-lane': isHighlighted,
-        })}
-        style={
-          {
-            '--lane-color': getColor(rows[row].color),
-          } as React.CSSProperties
-        }
-      >
-        <CommitGraphCell
-          row={rows[row]}
-          columnCount={columnCount}
-          height={RowHeight}
-          highlightedColor={highlightedColor}
-        />
-        {this.renderCommit(row)}
-      </div>
-    )
+    return graph === undefined
+      ? content
+      : renderCommitGraphRow(
+          row,
+          { ...this.props, graph, height: RowHeight },
+          content
+        )
   }
 
   private renderCommit = (row: number) => {
@@ -395,11 +316,7 @@ export class CommitList extends React.Component<
           unpushedTags.length
         )}
         commit={commit}
-        branchNames={
-          this.props.showCommitGraph
-            ? this.props.branchTips?.get(commit.sha)
-            : undefined
-        }
+        branchNames={this.props.graph?.branchTips.get(commit.sha)}
         emoji={this.props.emoji}
         isDraggable={
           this.props.isMultiCommitOperationInProgress === false &&
@@ -693,9 +610,7 @@ export class CommitList extends React.Component<
           rowHeight={RowHeight}
           selectedRows={selectedRows}
           rowRenderer={
-            this.props.showCommitGraph
-              ? this.renderCommitWithGraph
-              : this.renderCommit
+            this.props.graph ? this.renderCommitWithGraph : this.renderCommit
           }
           onDropDataInsertion={this.onDropDataInsertion}
           onSelectionChanged={this.onSelectionChanged}
@@ -723,8 +638,7 @@ export class CommitList extends React.Component<
             tagsToPush: this.props.tagsToPush,
             shasToHighlight: this.props.shasToHighlight,
             selectedSHAs: this.props.selectedSHAs,
-            branchTips: this.props.branchTips,
-            localBranchTips: this.props.localBranchTips,
+            graph: this.props.graph,
             preferAbsoluteDates: this.props.preferAbsoluteDates,
           }}
           setScrollTop={this.props.compareListScrollTop}

@@ -14,20 +14,16 @@ export interface IBranchSegment {
   readonly shas: ReadonlySet<string>
 }
 
-/**
- * The shas of a commit and everything it descends from that is loaded, without
- * going through the commit `avoid`.
- */
+/** The shas of a commit and everything it descends from that is loaded. */
 function getReachable(
   sha: string,
-  lookup: ReadonlyMap<string, IParentLinks>,
-  avoid?: string
+  lookup: ReadonlyMap<string, IParentLinks>
 ): Set<string> {
   const reachable = new Set<string>()
   const pending = [sha]
 
   for (let next = pending.pop(); next !== undefined; next = pending.pop()) {
-    if (next === avoid || reachable.has(next)) {
+    if (reachable.has(next)) {
       continue
     }
 
@@ -60,12 +56,13 @@ function getFirstParentChain(
  * Works out which commits were made on the same branch as a commit, which git
  * doesn't record. For each branch that is the commits from its tip, following
  * the first parent of each, up to where the branch started, which is the first
- * commit that another branch reaches too.
+ * commit that is on the line of another branch too.
  *
- * A branch that was built on top of the branch isn't taken as another one,
- * but one that the branch was merged into is, for the commits that it got on
- * its own. Of the branches that have the commit among
- * theirs, the one with the fewest commits wins, as that fits it best.
+ * Only the line of another branch counts, not everything it reaches, as that
+ * takes in all that was merged into it. A branch that was merged into this one
+ * is left out, and so is one built on top of it, as they come from it. Of the
+ * branches that have the commit among theirs, the one with the fewest commits
+ * wins, as that fits it best.
  *
  * A branch is skipped when the start of it can't be told, which is when its
  * history runs out of the loaded commits before it meets another branch.
@@ -73,13 +70,18 @@ function getFirstParentChain(
  *
  * @param commitSHAs The loaded commits, newest first.
  * @param lookup     The commits by their sha.
- * @param tips       The names of the branches by the sha they point at.
+ * @param tips       The names of the branches by the sha they point at, which
+ *                   mark where a branch started.
+ * @param ownerTips  The ones of `tips` that a commit can be made on. Others,
+ *                   such as the branches of another remote, only mark where a
+ *                   branch started, so as not to count all that they hold.
  */
 export function getBranchSegment(
   sha: string,
   commitSHAs: ReadonlyArray<string>,
   lookup: ReadonlyMap<string, IParentLinks>,
-  tips: ReadonlyMap<string, ReadonlyArray<string>>
+  tips: ReadonlyMap<string, ReadonlyArray<string>>,
+  ownerTips: ReadonlyMap<string, ReadonlyArray<string>> = tips
 ): IBranchSegment | null {
   const tipSHAs = commitSHAs.filter(s => tips.has(s))
   const reachableByTip = new Map(
@@ -89,26 +91,32 @@ export function getBranchSegment(
   let found: IBranchSegment | null = null
 
   for (const [tipSha, reachable] of reachableByTip) {
-    if (!reachable.has(sha)) {
+    if (!ownerTips.has(tipSha) || !reachable.has(sha)) {
       continue
     }
 
-    // What the other branches reach, which the branch grew out of.
+    // The lines of the other branches, which the branch grew out of.
+    const chain = getFirstParentChain(tipSha, lookup)
     const others = new Set<string>()
     for (const [otherSha, otherReachable] of reachableByTip) {
       if (otherSha === tipSha) {
         continue
       }
 
-      if (!otherReachable.has(tipSha)) {
-        otherReachable.forEach(s => others.add(s))
-      } else if (!getFirstParentChain(otherSha, lookup).has(tipSha)) {
-        // The branch was merged into the other one, which has more of its own,
-        // and which the branch started from where they meet.
-        getReachable(otherSha, lookup, tipSha).forEach(s => others.add(s))
+      const isAncestor = reachable.has(otherSha)
+      const isDescendant = otherReachable.has(tipSha)
+      const otherChain = getFirstParentChain(otherSha, lookup)
+
+      if (
+        // The other branch was merged into this one, and has its own commits.
+        (isAncestor && !chain.has(otherSha)) ||
+        // The other branch is built on top of this one, and reaches all of it.
+        (isDescendant && otherChain.has(tipSha))
+      ) {
+        continue
       }
-      // Otherwise the other branch is built on top of this one, and reaches
-      // all of it.
+
+      otherChain.forEach(s => others.add(s))
     }
 
     const shas = new Set<string>()

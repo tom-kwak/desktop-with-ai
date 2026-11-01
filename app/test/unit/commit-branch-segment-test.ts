@@ -101,4 +101,54 @@ describe('getBranchSegment', () => {
     const cut = [commit('f1', 'd1'), commit('d1', 'd0')]
     assert.strictEqual(segment('f1', cut, { f1: ['feature'] }), null)
   })
+
+  describe('on a branch that merged others and grew out of an upstream', () => {
+    //  m2  develop, merged feature
+    //  |\
+    //  | f1  feature
+    //  |/
+    //  m1  develop, merged older
+    //  |\
+    //  | o1  older, merged
+    //  |/
+    //  u1  upstream/development
+    const history = [
+      commit('m2', 'm1', 'f1'),
+      commit('f1', 'm1'),
+      commit('m1', 'u1', 'o1'),
+      commit('o1', 'u1'),
+      commit('u1', 'u0'),
+      commit('u0'),
+    ]
+    const tips = {
+      m2: ['develop'],
+      f1: ['feature'],
+      o1: ['older'],
+      u1: ['upstream/development'],
+    }
+    const owners = { m2: ['develop'], f1: ['feature'], o1: ['older'] }
+
+    const run = (sha: string) => {
+      const result = getBranchSegment(
+        sha,
+        history.map(c => c.sha),
+        new Map(history.map(c => [c.sha, c])),
+        new Map(Object.entries(tips)),
+        new Map(Object.entries(owners))
+      )
+      return result && [...result.shas].sort()
+    }
+
+    it('counts all the commits made on the branch, merges included', () => {
+      assert.deepStrictEqual(run('m2'), ['m1', 'm2'])
+    })
+
+    it('counts the commits of a branch that was merged only', () => {
+      assert.deepStrictEqual(run('f1'), ['f1'])
+    })
+
+    it('has no branch for the commits of the upstream', () => {
+      assert.strictEqual(run('u1'), null)
+    })
+  })
 })

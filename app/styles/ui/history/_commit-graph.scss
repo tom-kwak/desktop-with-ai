@@ -27,3 +27,26 @@
     stroke-width: 1.5;
   }
 }
+
+/** The branches that point at a commit, in the color of their lane */
+#commit-list .commit .branch-indicator {
+  display: flex;
+  flex: 0 0 auto;
+  max-width: 50%;
+  margin-left: var(--spacing-half);
+  background: var(--lane-color, var(--secondary-button-background));
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+
+  .branch-name {
+    padding: 0 var(--spacing-half);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .branch-indicator-more {
+    padding: 0 var(--spacing-half);
+    background: rgba(0, 0, 0, 0.2);
+  }
+}
