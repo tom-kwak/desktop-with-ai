@@ -18,17 +18,17 @@
 
 ## 설치
 
-Apple Silicon Mac 전용입니다.
+Apple Silicon Mac 전용입니다. 터미널에서 한 줄로 설치합니다. 앱이 실행 중이면 먼저 종료하세요.
 
-1. [zip](https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip)의 압축을 풀고 `ReviewDesk.app`을 응용 프로그램 폴더로 옮겨 실행합니다.
-2. AI 리뷰를 쓰려면 [Claude Code](https://claude.com/claude-code)를 설치하고 터미널에서 로그인해 둡니다.
+```bash
+curl -L https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip -o /tmp/ReviewDesk.zip && unzip -oq /tmp/ReviewDesk.zip -d /Applications && xattr -dr com.apple.quarantine /Applications/ReviewDesk.app
+```
 
+최신 버전을 받아 `/Applications`에 설치하고, 공증을 받지 않은 앱에 macOS가 띄우는 "확인되지 않은 개발자" 경고를 건너뛰도록 격리 표시(`xattr`)를 지웁니다. 업데이트할 때도 같은 명령을 씁니다.
+
+- 직접 설치하려면 [zip](https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip)의 압축을 풀고 `ReviewDesk.app`을 응용 프로그램 폴더로 옮긴 뒤, 막히면 시스템 설정의 개인정보 보호 및 보안에서 허용하세요.
 - 실행 중에는 앱을 옮기지 마세요. 옮기면 내장 Git을 찾지 못합니다. 옮겼다면 앱을 종료하고 다시 실행하세요.
-- 공증을 받지 않은 앱이라 macOS가 막으면 시스템 설정의 개인정보 보호 및 보안에서 허용하거나 아래 명령을 실행하세요.
-
-  ```bash
-  xattr -dr com.apple.quarantine /Applications/ReviewDesk.app
-  ```
+- AI 리뷰를 쓰려면 [Claude Code](https://claude.com/claude-code)를 설치하고 터미널에서 로그인해 둡니다.
 
 ## 직접 빌드하기
 
