@@ -1,10 +1,10 @@
 import * as React from 'react'
 import { Dialog, DialogContent, DialogFooter } from '../dialog'
 import { OkCancelButtonGroup } from '../dialog/ok-cancel-button-group'
-import { TextBox } from '../lib/text-box'
+import { Select } from '../lib/select'
 import { Checkbox, CheckboxValue } from '../lib/checkbox'
-import { Ref } from '../lib/ref'
 import { Repository } from '../../models/repository'
+import { getBranches } from '../../lib/git/for-each-ref'
 import {
   IBranchReviewOptions,
   getBranchAnalysisInput,
@@ -19,7 +19,12 @@ interface IAIBranchReviewDialogProps {
 }
 
 interface IAIBranchReviewDialogState {
-  readonly branchName: string | null
+  /** Local and remote branch names the user can pick from. */
+  readonly branchNames: ReadonlyArray<string>
+  /** The checked-out branch, or `HEAD` when detached. */
+  readonly currentBranch: string
+  /** The branch to review. Defaults to the current branch. */
+  readonly branch: string
   readonly baseRef: string
   readonly includeUncommitted: boolean
   /** Set once the user starts the review. */
@@ -27,8 +32,8 @@ interface IAIBranchReviewDialogState {
 }
 
 /**
- * Asks which branch to compare against, then reviews everything the current
- * branch changes relative to it.
+ * Asks which branch to review and which branch to compare it against, then
+ * reviews everything the reviewed branch changes relative to the base.
  */
 export class AIBranchReviewDialog extends React.Component<
   IAIBranchReviewDialogProps,
@@ -39,7 +44,9 @@ export class AIBranchReviewDialog extends React.Component<
   public constructor(props: IAIBranchReviewDialogProps) {
     super(props)
     this.state = {
-      branchName: null,
+      branchNames: [],
+      currentBranch: '',
+      branch: '',
       baseRef: '',
       includeUncommitted: false,
       started: null,
@@ -49,15 +56,21 @@ export class AIBranchReviewDialog extends React.Component<
   public async componentDidMount() {
     const { repository } = this.props
     try {
-      const [branchName, baseRef] = await Promise.all([
+      const [currentBranch, baseRef, branches] = await Promise.all([
         getCurrentBranchName(repository),
         getDefaultReviewBaseRef(repository),
+        getBranches(repository, 'refs/heads', 'refs/remotes'),
       ])
       if (!this.unmounted) {
-        this.setState({ branchName, baseRef })
+        this.setState({
+          currentBranch,
+          branch: currentBranch,
+          baseRef,
+          branchNames: branches.map(b => b.name),
+        })
       }
     } catch {
-      // The fields stay empty and the user can fill them in.
+      // The selects stay empty and the user can still pick a branch later.
     }
   }
 
@@ -72,27 +85,47 @@ export class AIBranchReviewDialog extends React.Component<
       : getBranchAnalysisInput(this.props.repository, started)
   }
 
-  private onBaseRefChanged = (baseRef: string) => this.setState({ baseRef })
+  private onBranchChanged = (e: React.FormEvent<HTMLSelectElement>) =>
+    this.setState({ branch: e.currentTarget.value })
+
+  private onBaseRefChanged = (e: React.FormEvent<HTMLSelectElement>) =>
+    this.setState({ baseRef: e.currentTarget.value })
 
   private onIncludeUncommittedChanged = (
     e: React.FormEvent<HTMLInputElement>
   ) => this.setState({ includeUncommitted: e.currentTarget.checked })
 
   private onSubmit = () => {
-    const baseRef = this.state.baseRef.trim()
-    if (baseRef !== '') {
+    const { branch, baseRef, includeUncommitted } = this.state
+    if (branch !== '' && baseRef !== '') {
       this.setState({
-        started: {
-          baseRef,
-          includeUncommitted: this.state.includeUncommitted,
-        },
+        started: { branch, baseRef, includeUncommitted },
       })
     }
   }
 
+  /**
+   * The options for a select, with `selected` included even when it isn't a
+   * listed branch (such as `HEAD` on a detached checkout).
+   */
+  private getOptions(selected: string): ReadonlyArray<string> {
+    const { branchNames } = this.state
+    return selected === '' || branchNames.includes(selected)
+      ? branchNames
+      : [selected, ...branchNames]
+  }
+
+  private renderBranchOptions(selected: string) {
+    return this.getOptions(selected).map(name => (
+      <option key={name} value={name}>
+        {name}
+      </option>
+    ))
+  }
+
   public render() {
     const { repository, onDismissed } = this.props
-    const { started, branchName } = this.state
+    const { started, branch, baseRef, currentBranch } = this.state
     const title = __DARWIN__ ? 'AI Branch Review' : 'AI branch review'
 
     if (started !== null) {
@@ -100,14 +133,15 @@ export class AIBranchReviewDialog extends React.Component<
         <AIAnalysisDialog
           repository={repository}
           title={title}
-          subject={`${branchName ?? 'the current branch'} against ${
-            started.baseRef
-          }`}
+          subject={`${started.branch} against ${started.baseRef}`}
           getInput={this.getInput}
           onDismissed={onDismissed}
         />
       )
     }
+
+    // Uncommitted changes only exist for the checked-out branch.
+    const canIncludeUncommitted = branch === currentBranch
 
     return (
       <Dialog
@@ -118,30 +152,39 @@ export class AIBranchReviewDialog extends React.Component<
       >
         <DialogContent>
           <p>
-            Review the changes on <Ref>{branchName ?? '…'}</Ref> compared to a
-            base branch, the way a pull request would show them.
+            Review the changes on the selected branch compared to a base branch,
+            the way a pull request would show them.
           </p>
-          <TextBox
+          <Select
+            label="Branch to review"
+            value={branch}
+            onChange={this.onBranchChanged}
+          >
+            {this.renderBranchOptions(branch)}
+          </Select>
+          <Select
             label="Base branch"
-            value={this.state.baseRef}
-            placeholder="origin/main"
-            autoFocus={true}
-            onValueChanged={this.onBaseRefChanged}
-          />
+            value={baseRef}
+            onChange={this.onBaseRefChanged}
+          >
+            {baseRef === '' ? <option value="">Choose a branch</option> : null}
+            {this.renderBranchOptions(baseRef)}
+          </Select>
           <Checkbox
             label="Include uncommitted changes to tracked files"
             value={
-              this.state.includeUncommitted
+              this.state.includeUncommitted && canIncludeUncommitted
                 ? CheckboxValue.On
                 : CheckboxValue.Off
             }
+            disabled={!canIncludeUncommitted}
             onChange={this.onIncludeUncommittedChanged}
           />
         </DialogContent>
         <DialogFooter>
           <OkCancelButtonGroup
             okButtonText="Review"
-            okButtonDisabled={this.state.baseRef.trim() === ''}
+            okButtonDisabled={branch === '' || baseRef === ''}
           />
         </DialogFooter>
       </Dialog>

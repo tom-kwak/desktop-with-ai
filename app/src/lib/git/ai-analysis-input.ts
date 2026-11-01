@@ -137,20 +137,26 @@ export async function getCurrentBranchName(
 }
 
 export interface IBranchReviewOptions {
-  /** The branch or ref the current branch is compared against. */
+  /** The branch or ref to review. */
+  readonly branch: string
+  /** The branch or ref it is compared against. */
   readonly baseRef: string
-  /** Also include tracked files with uncommitted changes. */
+  /**
+   * Also include tracked files with uncommitted changes. Only applies when
+   * `branch` is the checked-out branch, since that is the only one whose
+   * working tree is on disk.
+   */
   readonly includeUncommitted: boolean
 }
 
 /**
- * Builds the review input for everything the current branch changes
- * compared to `baseRef` (the commits since their merge base, like a pull
- * request), optionally together with uncommitted changes to tracked files.
+ * Builds the review input for everything `branch` changes compared to
+ * `baseRef` (the commits since their merge base, like a pull request),
+ * optionally together with uncommitted changes to tracked files.
  */
 export async function getBranchAnalysisInput(
   repository: Repository,
-  { baseRef, includeUncommitted }: IBranchReviewOptions
+  { branch, baseRef, includeUncommitted }: IBranchReviewOptions
 ): Promise<IAIAnalysisInput> {
   if (baseRef.trim() === '' || !(await refExists(repository, baseRef))) {
     throw new Error(
@@ -158,15 +164,22 @@ export async function getBranchAnalysisInput(
     )
   }
 
+  if (branch.trim() === '' || !(await refExists(repository, branch))) {
+    throw new Error(`Branch '${branch}' was not found in this repository.`)
+  }
+
+  const currentBranch = await getCurrentBranchName(repository)
+  const withUncommitted = includeUncommitted && branch === currentBranch
+
   // For `git log`, `A..B` lists the commits only on the branch, while `A...B`
   // would also list the ones only on the base. For `git diff` it is the
   // opposite: `A...B` diffs against the merge base, like a pull request does.
   const commits = await getCommits(
     repository,
-    `${baseRef}..HEAD`,
+    `${baseRef}..${branch}`,
     MaxBranchCommits
   )
-  const range = `${baseRef}...HEAD`
+  const range = `${baseRef}...${branch}`
 
   const diffArgs = ['--no-ext-diff', '--no-color', '--patch', '--stat', '-M']
   const [branchDiff, uncommittedDiff] = await Promise.all([
@@ -175,7 +188,7 @@ export async function getBranchAnalysisInput(
       repository.path,
       'getBranchAnalysisInput'
     ),
-    includeUncommitted
+    withUncommitted
       ? git(
           ['diff', ...diffArgs, 'HEAD', '--'],
           repository.path,
@@ -187,26 +200,26 @@ export async function getBranchAnalysisInput(
   const sections = [
     branchDiff.stdout.trim() === ''
       ? ''
-      : `# Changes on the branch compared to ${baseRef}\n${branchDiff.stdout}`,
+      : `# Changes on ${branch} compared to ${baseRef}\n${branchDiff.stdout}`,
     uncommittedDiff === null || uncommittedDiff.stdout.trim() === ''
       ? ''
       : `# Uncommitted changes to tracked files\n${uncommittedDiff.stdout}`,
   ].filter(section => section !== '')
 
   if (sections.length === 0) {
-    throw new Error(`There are no changes compared to '${baseRef}'.`)
+    throw new Error(`There are no changes on ${branch} compared to ${baseRef}.`)
   }
 
   const log =
     commits.length > 0
       ? formatCommitLog(commits)
-      : `(no commits ahead of ${baseRef})`
+      : `(no commits on ${branch} ahead of ${baseRef})`
 
   return {
     log,
     diff: sections.join('\n'),
     commits: commits.map(toReviewedCommit),
-    branch: { name: await getCurrentBranchName(repository), baseRef },
+    branch: { name: branch, baseRef },
   }
 }
 
