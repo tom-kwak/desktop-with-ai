@@ -51,4 +51,5 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" dist/ReviewDesk-arm64.zip \
             --title "ReviewDesk ${GITHUB_REF_NAME#release-v}" \
+            --generate-notes \
             --notes "macOS, Apple Silicon. See the download page for how to install it."
