@@ -29,7 +29,15 @@ export const getCommitListGraph = memoizeOne(
     branches: ReadonlyArray<Branch>,
     currentBranch: Branch | null
   ): ICommitListGraph => {
-    const all = currentBranch === null ? branches : [currentBranch, ...branches]
+    // It can be in the list until that catches up with a checkout.
+    const all =
+      currentBranch === null
+        ? branches
+        : [
+            currentBranch,
+            ...branches.filter(b => b.name !== currentBranch.name),
+          ]
+
     return {
       branchTips: getBranchTips(all),
       localBranchTips: getLocalBranchTips(all),
@@ -65,6 +73,10 @@ const getSegment = memoizeOne(
         )
 )
 
+const getSelectedRow = memoizeOne(
+  (commitSHAs: ReadonlyArray<string>, sha: string) => commitSHAs.indexOf(sha)
+)
+
 interface ICommitGraphRowOptions {
   readonly commitSHAs: ReadonlyArray<string>
   readonly commitLookup: Map<string, Commit>
@@ -73,32 +85,56 @@ interface ICommitGraphRowOptions {
   readonly height: number
 }
 
+/**
+ * Works out how a row of the graph stands out for the selected commit.
+ *
+ * @returns the lane to emphasize in the row, if any, and whether the commit of
+ *          the row is marked.
+ */
+export function getCommitRowHighlight(
+  row: number,
+  options: ICommitGraphRowOptions
+) {
+  const { commitSHAs, commitLookup, selectedSHAs, graph } = options
+  const { rows } = getGraph(commitSHAs, commitLookup)
+  const selectedSHA = selectedSHAs.length === 1 ? selectedSHAs[0] : undefined
+  const segment = getSegment(selectedSHA, commitSHAs, commitLookup, graph)
+
+  if (segment !== null) {
+    // The commits made on the branch of the selected commit stand out, and so
+    // does their own lane, while the rest of the graph is dimmed.
+    const isHighlighted = segment.shas.has(commitSHAs[row])
+    const highlightedColor = isHighlighted ? rows[row].color : NoLaneColor
+    return { highlightedColor, isHighlighted }
+  }
+
+  const selectedRow =
+    selectedSHA === undefined ? -1 : getSelectedRow(commitSHAs, selectedSHA)
+
+  if (selectedRow === -1) {
+    return { highlightedColor: undefined, isHighlighted: false }
+  }
+
+  // The branch can't be told, so follow the lane of the selected commit.
+  const highlightedColor = rows[selectedRow].color
+  return {
+    highlightedColor,
+    isHighlighted: highlightedColor === rows[row].color,
+  }
+}
+
 /** Draws a row of the commit list with its part of the commit graph. */
 export function renderCommitGraphRow(
   row: number,
   options: ICommitGraphRowOptions,
   content: React.ReactNode
 ) {
-  const { commitSHAs, commitLookup, selectedSHAs, graph, height } = options
+  const { commitSHAs, commitLookup, height } = options
   const { rows, columnCount } = getGraph(commitSHAs, commitLookup)
-  const selectedSHA = selectedSHAs.length === 1 ? selectedSHAs[0] : undefined
-  const segment = getSegment(selectedSHA, commitSHAs, commitLookup, graph)
-
-  let highlightedColor: number | undefined
-  let isHighlighted = false
-
-  if (segment !== null) {
-    // The commits made on the branch of the selected commit stand out, and so
-    // does their own lane, while the rest of the graph is dimmed.
-    isHighlighted = segment.shas.has(commitSHAs[row])
-    highlightedColor = isHighlighted ? rows[row].color : NoLaneColor
-  } else if (selectedSHA !== undefined) {
-    // The branch can't be told, so follow the lane of the selected commit.
-    const selectedRow = commitSHAs.indexOf(selectedSHA)
-    highlightedColor = selectedRow === -1 ? undefined : rows[selectedRow].color
-    isHighlighted =
-      highlightedColor !== undefined && highlightedColor === rows[row].color
-  }
+  const { highlightedColor, isHighlighted } = getCommitRowHighlight(
+    row,
+    options
+  )
 
   return (
     <div

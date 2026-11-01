@@ -151,4 +151,106 @@ describe('getBranchSegment', () => {
       assert.strictEqual(run('u1'), null)
     })
   })
+
+  it('stops at a branch that only marks where this one started', () => {
+    //  f1  feature
+    //  u1  upstream/development
+    //  u0
+    const onRemote = [commit('f1', 'u1'), commit('u1', 'u0'), commit('u0')]
+    const remoteTips = { f1: ['feature'], u1: ['upstream/development'] }
+    const result = getBranchSegment(
+      'f1',
+      onRemote.map(c => c.sha),
+      new Map(onRemote.map(c => [c.sha, c])),
+      new Map(Object.entries(remoteTips)),
+      new Map([['f1', ['feature']]])
+    )
+
+    assert.deepStrictEqual([...(result?.shas ?? [])], ['f1'])
+  })
+
+  it('puts a commit on at most one branch', () => {
+    // Histories with merges and branches all over, the same on every run.
+    let seed = 7
+    const random = (max: number) => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      return seed % max
+    }
+
+    for (let round = 0; round < 300; round++) {
+      const commits: Array<ReturnType<typeof commit>> = []
+
+      for (let i = 0; i < 25; i++) {
+        const older = commits.map(c => c.sha)
+        const parents = [...older.slice(-1 - random(3), older.length)]
+        commits.push(commit(`c${i}`, ...parents.slice(0, 1 + random(2))))
+      }
+
+      commits.reverse()
+
+      const shas = commits.map(c => c.sha)
+      const lookup = new Map(commits.map(c => [c.sha, c]))
+      const tips = shas
+        .filter(() => random(4) === 0)
+        .map(s => [s, [s]] as const)
+      const allTips = new Map(tips)
+
+      for (const sha of shas) {
+        const owners = tips.filter(
+          tip =>
+            getBranchSegment(sha, shas, lookup, allTips, new Map([tip])) !==
+            null
+        )
+        assert.ok(owners.length <= 1, `${sha} is on ${owners.length} branches`)
+      }
+    }
+  })
+
+  it('takes the end of a shallow clone for the start of the history', () => {
+    // The parents of s1 were cut off, so git reports that it has none.
+    const shallow = [commit('s2', 's1'), commit('s1')]
+
+    assert.deepStrictEqual(segment('s2', shallow, { s2: ['main'] }), {
+      names: ['main'],
+      shas: ['s1', 's2'],
+    })
+  })
+
+  it('visits the commits once however many branches there are', () => {
+    // A long line, with a lot of branches that leave it right at the top.
+    class CountingMap<K, V> extends Map<K, V> {
+      public gets = 0
+      public override get(key: K) {
+        this.gets++
+        return super.get(key)
+      }
+    }
+
+    const run = (length: number, branchCount: number) => {
+      const line = Array.from({ length }, (_, i) =>
+        i === length - 1 ? commit(`l${i}`) : commit(`l${i}`, `l${i + 1}`)
+      )
+      const side = Array.from({ length: branchCount }, (_, i) =>
+        commit(`b${i}`, 'l0')
+      )
+      const commits = [...side, ...line]
+      const lookup = new CountingMap(commits.map(c => [c.sha, c]))
+      const sideTips = side.map(c => [c.sha, [c.sha]] as const)
+      const remoteTips = new Map(sideTips)
+
+      getBranchSegment(
+        'b0',
+        commits.map(c => c.sha),
+        lookup,
+        remoteTips,
+        new Map([sideTips[0]])
+      )
+
+      return lookup.gets
+    }
+
+    // A hundred times the branches on the same line is about the same work,
+    // where going over the whole line for each would take a hundred times it.
+    assert.ok(run(1000, 500) < run(1000, 5) * 2)
+  })
 })

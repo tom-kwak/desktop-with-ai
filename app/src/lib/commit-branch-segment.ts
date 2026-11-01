@@ -53,20 +53,71 @@ function getFirstParentChain(
 }
 
 /**
+ * The commits on the lines of the branches that this one grew out of, which
+ * are where it started.
+ *
+ * Only the line of another branch counts, not everything it reaches, as that
+ * takes in all that was merged into it. A branch that was merged into this one
+ * is left out, and so is one built on top of it, as they come from it.
+ *
+ * The lines of branches run together, so each stops at what is known already.
+ * That keeps this to one visit of each commit, however many branches there are.
+ */
+function getLinesOfOthers(
+  tipSha: string,
+  tipSHAs: ReadonlyArray<string>,
+  chain: ReadonlySet<string>,
+  reachable: ReadonlySet<string>,
+  lookup: ReadonlyMap<string, IParentLinks>
+): Set<string> {
+  const others = new Set<string>()
+  // The lines that lead to this branch, which are built on top of it.
+  const onTop = new Set<string>([tipSha])
+
+  for (const otherSha of tipSHAs) {
+    const isMergedIn = reachable.has(otherSha) && !chain.has(otherSha)
+    if (otherSha === tipSha || isMergedIn) {
+      continue
+    }
+
+    const line = new Set<string>()
+    let next: string | undefined = otherSha
+
+    while (
+      next !== undefined &&
+      !others.has(next) &&
+      !onTop.has(next) &&
+      !line.has(next)
+    ) {
+      line.add(next)
+      next = lookup.get(next)?.parentSHAs[0]
+    }
+
+    const known = next !== undefined && onTop.has(next) ? onTop : others
+    line.forEach(s => known.add(s))
+  }
+
+  return others
+}
+
+/**
  * Works out which commits were made on the same branch as a commit, which git
  * doesn't record. For each branch that is the commits from its tip, following
  * the first parent of each, up to where the branch started, which is the first
  * commit that is on the line of another branch too.
  *
- * Only the line of another branch counts, not everything it reaches, as that
- * takes in all that was merged into it. A branch that was merged into this one
- * is left out, and so is one built on top of it, as they come from it. Of the
- * branches that have the commit among theirs, the one with the fewest commits
- * wins, as that fits it best.
+ * A commit is on at most one branch this way. Two branches with a commit on
+ * their lines would each have to leave the other out to count it, but one that
+ * is built on top of the other, or merged into it, still marks where that one
+ * started or ended.
  *
  * A branch is skipped when the start of it can't be told, which is when its
  * history runs out of the loaded commits before it meets another branch.
  * Returns null when no branch is left for the commit.
+ *
+ * The first commit of a shallow clone has no parents as far as git says, so it
+ * passes for the start of the history. A branch then counts down to there,
+ * which is all that can be seen of it anyway.
  *
  * @param commitSHAs The loaded commits, newest first.
  * @param lookup     The commits by their sha.
@@ -84,40 +135,21 @@ export function getBranchSegment(
   ownerTips: ReadonlyMap<string, ReadonlyArray<string>> = tips
 ): IBranchSegment | null {
   const tipSHAs = commitSHAs.filter(s => tips.has(s))
-  const reachableByTip = new Map(
-    tipSHAs.map(tipSha => [tipSha, getReachable(tipSha, lookup)])
-  )
 
-  let found: IBranchSegment | null = null
-
-  for (const [tipSha, reachable] of reachableByTip) {
-    if (!ownerTips.has(tipSha) || !reachable.has(sha)) {
+  for (const tipSha of tipSHAs) {
+    if (!ownerTips.has(tipSha)) {
       continue
     }
 
-    // The lines of the other branches, which the branch grew out of.
+    // The commits of a branch are on its line, so one that doesn't have the
+    // commit there needs no more looking at.
     const chain = getFirstParentChain(tipSha, lookup)
-    const others = new Set<string>()
-    for (const [otherSha, otherReachable] of reachableByTip) {
-      if (otherSha === tipSha) {
-        continue
-      }
-
-      const isAncestor = reachable.has(otherSha)
-      const isDescendant = otherReachable.has(tipSha)
-      const otherChain = getFirstParentChain(otherSha, lookup)
-
-      if (
-        // The other branch was merged into this one, and has its own commits.
-        (isAncestor && !chain.has(otherSha)) ||
-        // The other branch is built on top of this one, and reaches all of it.
-        (isDescendant && otherChain.has(tipSha))
-      ) {
-        continue
-      }
-
-      otherChain.forEach(s => others.add(s))
+    if (!chain.has(sha)) {
+      continue
     }
+
+    const reachable = getReachable(tipSha, lookup)
+    const others = getLinesOfOthers(tipSha, tipSHAs, chain, reachable, lookup)
 
     const shas = new Set<string>()
     let startKnown = false
@@ -138,14 +170,10 @@ export function getBranchSegment(
         commit.parentSHAs.length === 0 || others.has(commit.parentSHAs[0])
     }
 
-    if (
-      startKnown &&
-      shas.has(sha) &&
-      (found === null || shas.size < found.shas.size)
-    ) {
-      found = { tipSha, branchNames: tips.get(tipSha) ?? [], shas }
+    if (startKnown && shas.has(sha)) {
+      return { tipSha, branchNames: tips.get(tipSha) ?? [], shas }
     }
   }
 
-  return found
+  return null
 }
