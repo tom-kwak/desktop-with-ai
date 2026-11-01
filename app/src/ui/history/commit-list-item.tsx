@@ -27,10 +27,12 @@ import { Emoji } from '../../lib/emoji'
 import { enableAccessibleListToolTips } from '../../lib/feature-flag'
 import { TooltippedContent } from '../lib/tooltipped-content'
 import { formatDate } from '../../lib/format-date'
+import { BranchChip } from './branch-chip'
 
 interface ICommitProps {
   readonly gitHubRepository: GitHubRepository | null
   readonly commit: Commit
+  readonly branchNames?: ReadonlyArray<string>
   readonly selectedCommits: ReadonlyArray<Commit>
   readonly emoji: Map<string, Emoji>
   readonly onRenderCommitDragElement?: (commit: Commit) => void
@@ -169,6 +171,7 @@ export class CommitListItem extends React.PureComponent<
                 <CommitAttribution avatarUsers={this.state.avatarUsers} />
                 {renderRelativeTime(date, this.props.preferAbsoluteDates)}
               </div>
+              <BranchChip branchNames={this.props.branchNames} />
             </div>
           </div>
           {this.renderCommitIndicators()}

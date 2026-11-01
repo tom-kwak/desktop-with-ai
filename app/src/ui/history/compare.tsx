@@ -9,6 +9,7 @@ import {
   IDisplayHistory,
 } from '../../lib/app-state'
 import { CommitList } from './commit-list'
+import { getCommitListGraph } from './commit-graph-row'
 import { Repository } from '../../models/repository'
 import { Branch } from '../../models/branch'
 import { defaultErrorHandler, Dispatcher } from '../dispatcher'
@@ -274,7 +275,14 @@ export class CompareSidebar extends React.Component<
         onCancelKeyboardReorder={this.onCancelKeyboardReorder}
         onSquash={this.onSquash}
         emptyListMessage={emptyListMessage}
-        showCommitGraph={formState.kind === HistoryTabMode.History}
+        graph={
+          formState.kind === HistoryTabMode.History
+            ? getCommitListGraph(
+                this.props.compareState.branches,
+                this.props.currentBranch
+              )
+            : undefined
+        }
         onCompareListScrolled={this.props.onCompareListScrolled}
         compareListScrollTop={this.props.compareListScrollTop}
         tagsToPush={this.props.tagsToPush ?? []}
