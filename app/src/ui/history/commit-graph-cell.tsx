@@ -10,6 +10,9 @@ const MaxColumns = 6
 /** How visible the lanes are that aren't the highlighted one. */
 const DimmedOpacity = 0.25
 
+/** How far from a commit the ring around it is, clear of a merge commit too. */
+const RingRadius = 6.5
+
 /** Colors that stay readable on the light and dark themes. */
 const Colors = [
   '#378ADD',
@@ -35,6 +38,8 @@ interface ICommitGraphCellProps {
    * is dimmed. Nothing is dimmed when it's undefined.
    */
   readonly highlightedColor?: number
+  /** Whether the commit was made on the current branch, which rings it. */
+  readonly isOnCurrentBranch?: boolean
 }
 
 /** The part of the commit graph that belongs to one row of the commit list. */
@@ -63,7 +68,7 @@ export class CommitGraphCell extends React.PureComponent<ICommitGraphCellProps> 
   }
 
   public render() {
-    const { row, columnCount, height } = this.props
+    const { row, columnCount, height, isOnCurrentBranch } = this.props
     const width = Math.min(columnCount, MaxColumns) * ColumnWidth
     const x = getX(row.column)
     const y = height / 2
@@ -92,6 +97,15 @@ export class CommitGraphCell extends React.PureComponent<ICommitGraphCellProps> 
         <g opacity={this.getOpacity(row.color)}>
           <circle cx={x} cy={y} r={row.isMerge ? 4.5 : 3.5} fill={color} />
           {row.isMerge && <circle cx={x} cy={y} r={1.5} fill="#ffffff" />}
+          {isOnCurrentBranch && (
+            <circle
+              className="current-branch-ring"
+              cx={x}
+              cy={y}
+              r={RingRadius}
+              stroke={color}
+            />
+          )}
         </g>
       </svg>
     )

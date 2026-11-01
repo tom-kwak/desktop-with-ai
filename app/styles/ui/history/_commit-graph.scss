@@ -20,11 +20,18 @@
   flex-shrink: 0;
   // Keep clear of the edge of the list.
   margin-left: var(--spacing-half);
+  // The ring around a commit is wider than its column.
+  overflow: visible;
 
   path,
   line {
     fill: none;
     stroke-width: 1.5;
+  }
+
+  .current-branch-ring {
+    fill: none;
+    stroke-width: 1.25;
   }
 }
 

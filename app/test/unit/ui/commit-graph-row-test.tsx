@@ -8,6 +8,7 @@ import { BranchChip } from '../../../src/ui/history/branch-chip'
 import {
   getCommitListGraph,
   getCommitRowHighlight,
+  isCommitOnCurrentBranch,
   renderCommitGraphRow,
 } from '../../../src/ui/history/commit-graph-row'
 import { render } from '../../helpers/ui/render'
@@ -119,7 +120,70 @@ describe('getCommitRowHighlight', () => {
   })
 })
 
+describe('isCommitOnCurrentBranch', () => {
+  const onCurrentBranch = (
+    current: Branch | null,
+    selectedSHAs: ReadonlyArray<string> = [],
+    list = commitSHAs
+  ) => {
+    const graph = getCommitListGraph(branches, current)
+    const opts = { ...options(selectedSHAs), graph, commitSHAs: list }
+    return list.filter((_, row) => isCommitOnCurrentBranch(row, opts))
+  }
+
+  it('finds the commits made on the current branch', () => {
+    assert.deepStrictEqual(onCurrentBranch(branches[0]), ['f2', 'f1'])
+  })
+
+  it('does not depend on the selected commit', () => {
+    assert.deepStrictEqual(onCurrentBranch(branches[0], ['d2']), ['f2', 'f1'])
+    assert.deepStrictEqual(onCurrentBranch(branches[0], ['f1', 'd1']), [
+      'f2',
+      'f1',
+    ])
+  })
+
+  it('finds nothing without a current branch', () => {
+    assert.deepStrictEqual(onCurrentBranch(null), [])
+  })
+
+  it('finds nothing when the start of the branch is not loaded', () => {
+    const list = ['f2', 'f1']
+    const lookup = new Map([
+      ['f2', commit('f2', 'f1')],
+      ['f1', commit('f1', 'd1')],
+    ])
+    const opts = {
+      ...options([]),
+      commitSHAs: list,
+      commitLookup: lookup,
+      graph: getCommitListGraph([branches[0]], branches[0]),
+    }
+
+    assert.strictEqual(isCommitOnCurrentBranch(0, opts), false)
+  })
+})
+
 describe('renderCommitGraphRow', () => {
+  const currentGraph = getCommitListGraph(branches, branches[0])
+  const ring = (sha: string, selectedSHAs: ReadonlyArray<string> = []) =>
+    render(
+      renderCommitGraphRow(
+        commitSHAs.indexOf(sha),
+        { ...options(selectedSHAs), graph: currentGraph },
+        null
+      )
+    ).container.querySelector('.current-branch-ring')
+
+  it('rings the commits of the current branch', () => {
+    assert.notStrictEqual(ring('f1'), null)
+    assert.strictEqual(ring('d2'), null)
+  })
+
+  it('keeps the ring when another branch is selected', () => {
+    assert.notStrictEqual(ring('f1', ['d2']), null)
+  })
+
   it('marks a row on the branch with the color of its lane', () => {
     const row = commitSHAs.indexOf('f1')
     const { container } = render(

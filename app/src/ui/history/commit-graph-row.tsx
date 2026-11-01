@@ -18,6 +18,8 @@ export interface ICommitListGraph {
   readonly branchTips: BranchTips
   /** The branches that a commit can be said to be made on. */
   readonly localBranchTips: BranchTips
+  /** The commit that the current branch points at, if there's a branch. */
+  readonly currentTipSha: string | null
 }
 
 /**
@@ -41,6 +43,7 @@ export const getCommitListGraph = memoizeOne(
     return {
       branchTips: getBranchTips(all),
       localBranchTips: getLocalBranchTips(all),
+      currentTipSha: currentBranch?.tip.sha ?? null,
     }
   }
 )
@@ -55,23 +58,26 @@ const getGraph = memoizeOne(
     )
 )
 
-const getSegment = memoizeOne(
-  (
-    sha: string | undefined,
-    commitSHAs: ReadonlyArray<string>,
-    lookup: Map<string, Commit>,
-    graph: ICommitListGraph
-  ) =>
-    sha === undefined
-      ? null
-      : getBranchSegment(
-          sha,
-          commitSHAs,
-          lookup,
-          graph.branchTips,
-          graph.localBranchTips
-        )
-)
+const findSegment = (
+  sha: string | null | undefined,
+  commitSHAs: ReadonlyArray<string>,
+  lookup: Map<string, Commit>,
+  graph: ICommitListGraph
+) =>
+  sha === undefined || sha === null
+    ? null
+    : getBranchSegment(
+        sha,
+        commitSHAs,
+        lookup,
+        graph.branchTips,
+        graph.localBranchTips
+      )
+
+const getSegment = memoizeOne(findSegment)
+
+// Apart from the selected one, as each would otherwise push out the other.
+const getCurrentBranchSegment = memoizeOne(findSegment)
 
 const getSelectedRow = memoizeOne(
   (commitSHAs: ReadonlyArray<string>, sha: string) => commitSHAs.indexOf(sha)
@@ -123,6 +129,25 @@ export function getCommitRowHighlight(
   }
 }
 
+/**
+ * Whether the commit of a row was made on the current branch. No commit is when
+ * the start of the branch can't be told, which leaves its extent unknown.
+ */
+export function isCommitOnCurrentBranch(
+  row: number,
+  options: ICommitGraphRowOptions
+) {
+  const { commitSHAs, commitLookup, graph } = options
+  const segment = getCurrentBranchSegment(
+    graph.currentTipSha,
+    commitSHAs,
+    commitLookup,
+    graph
+  )
+
+  return segment !== null && segment.shas.has(commitSHAs[row])
+}
+
 /** Draws a row of the commit list with its part of the commit graph. */
 export function renderCommitGraphRow(
   row: number,
@@ -150,6 +175,7 @@ export function renderCommitGraphRow(
         columnCount={columnCount}
         height={height}
         highlightedColor={highlightedColor}
+        isOnCurrentBranch={isCommitOnCurrentBranch(row, options)}
       />
       {content}
     </div>
