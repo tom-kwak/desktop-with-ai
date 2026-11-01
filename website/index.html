@@ -261,9 +261,7 @@
           id="download-link"
           >macOS용 다운로드 (Apple Silicon)</a
         >
-        <p class="requirement" id="download-meta">
-          Apple Silicon Mac 전용
-        </p>
+        <p class="requirement" id="download-meta">Apple Silicon Mac 전용</p>
         <p class="requirement">
           Intel Mac과 Windows용 빌드는 제공하지 않습니다.
         </p>
@@ -280,7 +278,10 @@
       <h2>시스템 요구 사항</h2>
       <ul>
         <li>Apple Silicon(M1 이상) Mac</li>
-        <li>AI 리뷰를 쓰려면 Claude Code, Codex CLI, Gemini CLI 중 하나가 필요합니다.</li>
+        <li>
+          AI 리뷰를 쓰려면 Claude Code, Codex CLI, Gemini CLI 중 하나가
+          필요합니다.
+        </li>
       </ul>
 
       <h2 id="install">설치</h2>
@@ -315,9 +316,9 @@
         <li>Gemini CLI</li>
       </ul>
       <p class="note">
-        리뷰할 커밋 로그와 diff는 선택한 에이전트의 서비스로 전송됩니다. 설정에서
-        저장소 접근을 켜면 저장소의 파일 내용도 함께 읽힐 수 있습니다(Claude
-        Code에서만 지원).
+        리뷰할 커밋 로그와 diff는 선택한 에이전트의 서비스로 전송됩니다.
+        설정에서 저장소 접근을 켜면 저장소의 파일 내용도 함께 읽힐 수
+        있습니다(Claude Code에서만 지원).
       </p>
 
       <h2 id="release-notes">릴리스 노트</h2>
@@ -348,85 +349,85 @@
       </footer>
     </main>
     <script>
-      (function () {
-        var repo = 'tom-kwak/desktop-with-ai';
-        var box = document.getElementById('releases');
+      ;(function () {
+        var repo = 'tom-kwak/desktop-with-ai'
+        var box = document.getElementById('releases')
 
         function fallback() {
-          box.innerHTML = '';
-          var p = document.createElement('p');
-          p.className = 'meta';
+          box.innerHTML = ''
+          var p = document.createElement('p')
+          p.className = 'meta'
           p.textContent =
-            '릴리스 노트를 불러오지 못했습니다. 아래 링크에서 확인해 주세요.';
-          box.appendChild(p);
+            '릴리스 노트를 불러오지 못했습니다. 아래 링크에서 확인해 주세요.'
+          box.appendChild(p)
         }
 
         function render(release) {
-          var el = document.createElement('article');
-          el.className = 'release';
-          var h = document.createElement('h3');
-          h.textContent = release.name || release.tag_name;
+          var el = document.createElement('article')
+          el.className = 'release'
+          var h = document.createElement('h3')
+          h.textContent = release.name || release.tag_name
           if (release.prerelease) {
-            var t = document.createElement('span');
-            t.className = 'tag';
-            t.textContent = '프리릴리스';
-            h.appendChild(t);
+            var t = document.createElement('span')
+            t.className = 'tag'
+            t.textContent = '프리릴리스'
+            h.appendChild(t)
           }
-          el.appendChild(h);
-          var d = document.createElement('div');
-          d.className = 'meta';
+          el.appendChild(h)
+          var d = document.createElement('div')
+          d.className = 'meta'
           d.textContent = new Date(release.published_at).toLocaleDateString(
             'ko-KR',
             { year: 'numeric', month: 'long', day: 'numeric' }
-          );
-          el.appendChild(d);
-          var body = (release.body || '').trim();
+          )
+          el.appendChild(d)
+          var body = (release.body || '').trim()
           if (body) {
-            var b = document.createElement('div');
-            b.className = 'body';
-            b.textContent = body;
-            el.appendChild(b);
+            var b = document.createElement('div')
+            b.className = 'body'
+            b.textContent = body
+            el.appendChild(b)
           }
-          return el;
+          return el
         }
 
         fetch('https://api.github.com/repos/' + repo + '/releases?per_page=10')
           .then(function (r) {
-            if (!r.ok) throw new Error(r.status);
-            return r.json();
+            if (!r.ok) throw new Error(r.status)
+            return r.json()
           })
           .then(function (releases) {
             releases = releases.filter(function (r) {
-              return !r.draft;
-            });
+              return !r.draft
+            })
             if (!releases.length) {
-              box.innerHTML = '';
-              var p = document.createElement('p');
-              p.className = 'meta';
-              p.textContent = '아직 릴리스가 없습니다.';
-              box.appendChild(p);
-              return;
+              box.innerHTML = ''
+              var p = document.createElement('p')
+              p.className = 'meta'
+              p.textContent = '아직 릴리스가 없습니다.'
+              box.appendChild(p)
+              return
             }
-            box.innerHTML = '';
+            box.innerHTML = ''
             releases.forEach(function (r) {
-              box.appendChild(render(r));
-            });
+              box.appendChild(render(r))
+            })
 
-            var latest = releases[0];
+            var latest = releases[0]
             var asset = (latest.assets || []).filter(function (a) {
-              return /arm64\.zip$/.test(a.name);
-            })[0];
+              return /arm64\.zip$/.test(a.name)
+            })[0]
             if (asset) {
-              var mb = Math.round(asset.size / 1048576);
+              var mb = Math.round(asset.size / 1048576)
               document.getElementById('download-meta').textContent =
                 latest.tag_name.replace(/^release-/, '') +
                 ' · Apple Silicon Mac 전용 · 약 ' +
                 mb +
-                'MB';
+                'MB'
             }
           })
-          .catch(fallback);
-      })();
+          .catch(fallback)
+      })()
     </script>
   </body>
 </html>
