@@ -8,16 +8,52 @@
     flex: 1;
     min-width: 0;
   }
+
+  // Commits on the lane of the selected commit, which is drawn in
+  // `--lane-color`, get a stripe of it at the edge of the row.
+  &.in-selected-lane {
+    box-shadow: inset 3px 0 0 var(--lane-color);
+  }
 }
 
 .commit-graph-cell {
   flex-shrink: 0;
   // Keep clear of the edge of the list.
   margin-left: var(--spacing-half);
+  // The ring around a commit is wider than its column.
+  overflow: visible;
 
   path,
   line {
     fill: none;
     stroke-width: 1.5;
+  }
+
+  .current-branch-ring {
+    fill: none;
+    stroke-width: 1.25;
+  }
+}
+
+/** The branches that point at a commit, in the color of their lane */
+#commit-list .commit .branch-indicator {
+  display: flex;
+  flex: 0 0 auto;
+  max-width: 50%;
+  margin-left: var(--spacing-half);
+  background: var(--lane-color, var(--secondary-button-background));
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+
+  .branch-name {
+    padding: 0 var(--spacing-half);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .branch-indicator-more {
+    padding: 0 var(--spacing-half);
+    background: rgba(0, 0, 0, 0.2);
   }
 }

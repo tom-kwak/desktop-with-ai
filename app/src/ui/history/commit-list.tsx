@@ -28,9 +28,8 @@ import { getAvatarUsersForCommit, IAvatarUser } from '../../models/avatar'
 import { formatDate } from '../../lib/format-date'
 import { Avatar } from '../lib/avatar'
 import { Octicon } from '../octicons'
-import { CommitGraphCell } from './commit-graph-cell'
-import { computeCommitGraph } from '../../lib/commit-graph'
 import * as octicons from '../octicons/octicons.generated'
+import { ICommitListGraph, renderCommitGraphRow } from './commit-graph-row'
 
 const RowHeight = 50
 
@@ -65,8 +64,8 @@ interface ICommitListProps {
   /** The message to display inside the list when no results are displayed */
   readonly emptyListMessage?: JSX.Element | string
 
-  /** Whether to show how the commits branch and merge next to them. */
-  readonly showCommitGraph?: boolean
+  /** Shows the commit graph next to the commits when it's there. */
+  readonly graph?: ICommitListGraph
 
   /** Data to be reordered via keyboard */
   readonly keyboardReorderData?: KeyboardInsertionData
@@ -205,12 +204,6 @@ export class CommitList extends React.Component<
   ICommitListState
 > {
   private commitsHash = memoize(makeCommitsHash, arrayEquals)
-  private getCommitGraph = memoize(
-    (commitSHAs: ReadonlyArray<string>, lookup: Map<string, Commit>) =>
-      computeCommitGraph(
-        commitSHAs.map(sha => lookup.get(sha) ?? { sha, parentSHAs: [] })
-      )
-  )
   private commitIndexBySha = memoizeOne(
     (commitSHAs: ReadonlyArray<string>) =>
       new Map(commitSHAs.map((sha, index) => [sha, index]))
@@ -281,19 +274,16 @@ export class CommitList extends React.Component<
     this.props.localCommitSHAs.includes(sha)
 
   private renderCommitWithGraph = (row: number) => {
-    const { commitSHAs, commitLookup } = this.props
-    const { rows, columnCount } = this.getCommitGraph(commitSHAs, commitLookup)
+    const { graph } = this.props
+    const content = this.renderCommit(row)
 
-    return (
-      <div className="commit-with-graph">
-        <CommitGraphCell
-          row={rows[row]}
-          columnCount={columnCount}
-          height={RowHeight}
-        />
-        {this.renderCommit(row)}
-      </div>
-    )
+    return graph === undefined
+      ? content
+      : renderCommitGraphRow(
+          row,
+          { ...this.props, graph, height: RowHeight },
+          content
+        )
   }
 
   private renderCommit = (row: number) => {
@@ -326,6 +316,7 @@ export class CommitList extends React.Component<
           unpushedTags.length
         )}
         commit={commit}
+        branchNames={this.props.graph?.branchTips.get(commit.sha)}
         emoji={this.props.emoji}
         isDraggable={
           this.props.isMultiCommitOperationInProgress === false &&
@@ -619,9 +610,7 @@ export class CommitList extends React.Component<
           rowHeight={RowHeight}
           selectedRows={selectedRows}
           rowRenderer={
-            this.props.showCommitGraph
-              ? this.renderCommitWithGraph
-              : this.renderCommit
+            this.props.graph ? this.renderCommitWithGraph : this.renderCommit
           }
           onDropDataInsertion={this.onDropDataInsertion}
           onSelectionChanged={this.onSelectionChanged}
@@ -648,6 +637,8 @@ export class CommitList extends React.Component<
             commitLookupHash: this.commitsHash(this.getVisibleCommits()),
             tagsToPush: this.props.tagsToPush,
             shasToHighlight: this.props.shasToHighlight,
+            selectedSHAs: this.props.selectedSHAs,
+            graph: this.props.graph,
             preferAbsoluteDates: this.props.preferAbsoluteDates,
           }}
           setScrollTop={this.props.compareListScrollTop}
