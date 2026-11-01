@@ -2,9 +2,17 @@
 
 커밋과 브랜치를 AI로 리뷰하는 데스크톱 Git 클라이언트입니다. [GitHub Desktop](https://github.com/desktop/desktop)을 포크해서 AI 리뷰와 커밋 그래프를 더했고, 기존 기능은 그대로 동작합니다.
 
-**[소개 페이지](https://tom-kwak.github.io/desktop-with-ai/)** · [다운로드](https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip) · [릴리스 노트](https://github.com/tom-kwak/desktop-with-ai/releases)
+**[소개 페이지](https://tom-kwak.github.io/desktop-with-ai/)** · [설치](#quick-start) · [릴리스 노트](https://github.com/tom-kwak/desktop-with-ai/releases)
 
 > 개인 포크이며 GitHub의 공식 제품이 아닙니다. 문제는 GitHub Desktop이 아니라 [이 저장소](https://github.com/tom-kwak/desktop-with-ai/issues)에 알려 주세요.
+
+## Quick Start
+
+Apple Silicon Mac에서 터미널에 붙여 넣으면 최신 버전이 설치됩니다. 앱이 실행 중이면 먼저 종료하세요.
+
+```bash
+curl -L https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip -o /tmp/ReviewDesk.zip && unzip -oq /tmp/ReviewDesk.zip -d /Applications && xattr -dr com.apple.quarantine /Applications/ReviewDesk.app
+```
 
 ## 추가한 기능
 
@@ -16,19 +24,13 @@
 - **리뷰 설정**: 톱니바퀴 버튼에서 에이전트, 모델, 저장소 읽기, 프롬프트(수정, 추가)를 정합니다. 전체 기본값과 프로젝트별 설정이 따로 있습니다.
 - **커밋 그래프**: History 목록 왼쪽에 브랜치 흐름을 그리고, 커밋을 선택하면 같은 브랜치의 커밋을 강조합니다. 브랜치 이름 칩과 현재 브랜치 링도 표시됩니다.
 
-## 설치
+## 설치 참고
 
-Apple Silicon Mac 전용입니다.
+Apple Silicon Mac 전용입니다. 위 Quick Start 명령은 최신 버전을 받아 `/Applications`에 설치하고, 공증을 받지 않은 앱에 macOS가 띄우는 "확인되지 않은 개발자" 경고를 건너뛰도록 격리 표시(`xattr`)를 지웁니다. 업데이트할 때도 같은 명령을 씁니다.
 
-1. [zip](https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip)의 압축을 풀고 `ReviewDesk.app`을 응용 프로그램 폴더로 옮겨 실행합니다.
-2. AI 리뷰를 쓰려면 [Claude Code](https://claude.com/claude-code)를 설치하고 터미널에서 로그인해 둡니다.
-
+- 직접 설치하려면 [zip](https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip)의 압축을 풀고 `ReviewDesk.app`을 응용 프로그램 폴더로 옮긴 뒤, 막히면 시스템 설정의 개인정보 보호 및 보안에서 허용하세요.
 - 실행 중에는 앱을 옮기지 마세요. 옮기면 내장 Git을 찾지 못합니다. 옮겼다면 앱을 종료하고 다시 실행하세요.
-- 공증을 받지 않은 앱이라 macOS가 막으면 시스템 설정의 개인정보 보호 및 보안에서 허용하거나 아래 명령을 실행하세요.
-
-  ```bash
-  xattr -dr com.apple.quarantine /Applications/ReviewDesk.app
-  ```
+- AI 리뷰를 쓰려면 [Claude Code](https://claude.com/claude-code)를 설치하고 터미널에서 로그인해 둡니다.
 
 ## 직접 빌드하기
 
