@@ -1,13 +1,13 @@
 name: ReviewDesk release
 
 # Builds the macOS app and attaches it to a GitHub release, which is where the
-# download page links to. Push a tag such as reviewdesk-v1.0.0 to run it. The tag
+# download page links to. Push a tag such as release-v1.0.2 to run it. The tag
 # has to be on a commit that is on main: only what has been merged into main is
 # released.
 on:
   push:
     tags:
-      - 'reviewdesk-v*'
+      - 'release-v[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
@@ -50,5 +50,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" dist/ReviewDesk-arm64.zip \
-            --title "ReviewDesk ${GITHUB_REF_NAME#reviewdesk-v}" \
+            --title "ReviewDesk ${GITHUB_REF_NAME#release-v}" \
             --notes "macOS, Apple Silicon. See the download page for how to install it."
