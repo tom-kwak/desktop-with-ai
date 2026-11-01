@@ -11,326 +11,1055 @@
     <style>
       :root {
         color-scheme: light dark;
-        --text: #1f2328;
-        --muted: #59636e;
-        --background: #ffffff;
-        --surface: #f6f8fa;
-        --border: #d1d9e0;
-        --accent: #534ab7;
+        --bg: #ffffff;
+        --bg-soft: #f6f4fb;
+        --card: #ffffff;
+        --text: #17151f;
+        --muted: #605c70;
+        --border: #e4e0ee;
+        --accent: #5b4bd0;
+        --accent-strong: #4637b8;
         --on-accent: #ffffff;
-        --warning-background: #fff8e6;
-        --warning-border: #e5c76b;
+        --teal: #0f8f6a;
+        --glow: rgba(127, 119, 221, 0.28);
+        --glow-2: rgba(93, 202, 165, 0.18);
+        --warn-bg: #fff7e3;
+        --warn-border: #ecd48b;
+        --code-bg: #13111c;
+        --code-text: #e8e4f6;
+        --shadow: 0 24px 60px -24px rgba(48, 30, 110, 0.35);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --text: #e6edf3;
-          --muted: #9198a1;
-          --background: #0d1117;
-          --surface: #161b22;
-          --border: #30363d;
-          --accent: #7f77dd;
-          --on-accent: #0d1117;
-          --warning-background: #2b2411;
-          --warning-border: #6b5a1e;
+          --bg: #0e0c16;
+          --bg-soft: #14111f;
+          --card: #171426;
+          --text: #f1eefb;
+          --muted: #a29db6;
+          --border: #2a2540;
+          --accent: #8f84f0;
+          --accent-strong: #a89fff;
+          --on-accent: #120f22;
+          --teal: #5dcaa5;
+          --glow: rgba(127, 119, 221, 0.3);
+          --glow-2: rgba(93, 202, 165, 0.12);
+          --warn-bg: #2a2410;
+          --warn-border: #6b5a1e;
+          --code-bg: #0a0912;
+          --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.8);
         }
       }
       * {
         box-sizing: border-box;
       }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 80px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+        * {
+          transition: none !important;
+        }
+      }
       body {
         margin: 0;
-        background: var(--background);
+        background: var(--bg);
         color: var(--text);
-        font: 16px/1.7 -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
-          'Segoe UI', 'Malgun Gothic', sans-serif;
-      }
-      main {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 64px 24px;
-      }
-      header {
-        text-align: center;
-        margin-bottom: 48px;
-      }
-      .icon {
-        width: 112px;
-        height: 112px;
-      }
-      h1 {
-        margin: 16px 0 8px;
-        font-size: 40px;
-        line-height: 1.2;
-      }
-      h2 {
-        margin: 48px 0 12px;
-        font-size: 20px;
-      }
-      p {
-        margin: 0 0 12px;
-      }
-      .lead {
-        color: var(--muted);
-        font-size: 18px;
-      }
-      .download {
-        display: inline-block;
-        margin-top: 20px;
-        padding: 12px 28px;
-        border-radius: 8px;
-        background: var(--accent);
-        color: var(--on-accent);
-        font-weight: 600;
-        text-decoration: none;
-      }
-      .download:focus-visible,
-      a:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-      }
-      .requirement {
-        margin-top: 12px;
-        color: var(--muted);
-        font-size: 14px;
-      }
-      ul,
-      ol {
-        margin: 0 0 12px;
-        padding-left: 22px;
-      }
-      li {
-        margin-bottom: 6px;
+        font: 16px/1.7 'Pretendard', -apple-system, BlinkMacSystemFont,
+          'Apple SD Gothic Neo', 'Segoe UI', 'Malgun Gothic', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        word-break: keep-all;
+        overflow-wrap: break-word;
       }
       a {
-        color: var(--accent);
+        color: var(--accent-strong);
+      }
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+        border-radius: 6px;
+      }
+      p {
+        margin: 0;
       }
       code {
         padding: 2px 6px;
-        border-radius: 4px;
-        background: var(--surface);
-        font: 14px ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-      pre {
-        margin: 8px 0 12px;
-        padding: 12px 16px;
-        overflow-x: auto;
+        border-radius: 6px;
+        background: var(--bg-soft);
         border: 1px solid var(--border);
-        border-radius: 8px;
-        background: var(--surface);
+        font: 13.5px ui-monospace, SFMono-Regular, Menlo, monospace;
       }
-      pre code {
-        padding: 0;
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 24px;
       }
-      .note {
-        margin: 12px 0;
-        padding: 12px 16px;
-        border: 1px solid var(--warning-border);
-        border-radius: 8px;
-        background: var(--warning-background);
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: color-mix(in srgb, var(--bg) 78%, transparent);
+        backdrop-filter: saturate(160%) blur(14px);
+        -webkit-backdrop-filter: saturate(160%) blur(14px);
+        border-bottom: 1px solid
+          color-mix(in srgb, var(--border) 70%, transparent);
+      }
+      .topbar .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 60px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        text-decoration: none;
+      }
+      .brand svg {
+        width: 28px;
+        height: 28px;
       }
       nav {
         display: flex;
-        gap: 20px;
-        justify-content: flex-end;
+        align-items: center;
+        gap: 4px;
         font-size: 14px;
       }
       nav a {
+        padding: 6px 12px;
+        border-radius: 999px;
         color: var(--muted);
         text-decoration: none;
+        transition: color 0.15s, background 0.15s;
       }
       nav a:hover {
-        color: var(--accent);
+        color: var(--text);
+        background: var(--bg-soft);
       }
+      nav a.gh {
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 88px 0 24px;
+        text-align: center;
+      }
+      .hero::before {
+        content: '';
+        position: absolute;
+        inset: -200px 0 auto;
+        height: 720px;
+        background: radial-gradient(
+            560px 360px at 28% 40%,
+            var(--glow),
+            transparent 70%
+          ),
+          radial-gradient(
+            520px 340px at 74% 30%,
+            var(--glow-2),
+            transparent 70%
+          );
+        pointer-events: none;
+      }
+      .hero > .wrap {
+        position: relative;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--card);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .eyebrow i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--teal);
+      }
+      h1 {
+        margin: 24px auto 0;
+        max-width: 760px;
+        font-size: clamp(36px, 6.4vw, 64px);
+        line-height: 1.12;
+        letter-spacing: -0.035em;
+        font-weight: 800;
+        text-wrap: balance;
+      }
+      h1 em {
+        font-style: normal;
+        background: linear-gradient(100deg, var(--accent), var(--teal));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .lead {
+        margin: 20px auto 0;
+        max-width: 560px;
+        color: var(--muted);
+        font-size: 18px;
+        text-wrap: balance;
+      }
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 32px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 13px 24px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: none;
+        transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+      .btn.primary {
+        border-color: transparent;
+        background: var(--accent);
+        color: var(--on-accent);
+        box-shadow: 0 10px 28px -10px var(--accent);
+      }
+      .btn.primary:hover {
+        background: var(--accent-strong);
+      }
+      .btn svg {
+        width: 18px;
+        height: 18px;
+      }
+      .hero-meta {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+
+      .shot {
+        position: relative;
+        overflow: hidden;
+        aspect-ratio: var(--w) / var(--h);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: #0d1117;
+        box-shadow: var(--shadow);
+      }
+      .shot {
+        cursor: zoom-in;
+      }
+      .shot img {
+        position: absolute;
+        display: block;
+        max-width: none;
+        height: auto;
+        width: calc(2000 / var(--w) * 100%);
+        left: calc(var(--x) / var(--w) * -100%);
+        top: calc(var(--y) / var(--h) * -100%);
+      }
+      .hero-shot {
+        margin: 56px auto 0;
+        max-width: 1000px;
+      }
+      .hero-shot figcaption {
+        margin-top: 14px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .showcase {
+        display: grid;
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
+        gap: 56px;
+        align-items: center;
+        margin-top: 80px;
+      }
+      .showcase.flip {
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
+      }
+      .showcase.flip .text {
+        order: 2;
+      }
+      .showcase h3 {
+        margin: 12px 0 10px;
+        font-size: 26px;
+        line-height: 1.25;
+        letter-spacing: -0.025em;
+      }
+      .showcase p {
+        color: var(--muted);
+      }
+      .showcase ul {
+        margin: 16px 0 0;
+        padding-left: 20px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .showcase li {
+        margin-bottom: 6px;
+      }
+      .showcase li b {
+        color: var(--text);
+      }
+      .new {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--teal) 16%, transparent);
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      .vs {
+        margin-top: 14px;
+        padding: 10px 14px;
+        border-left: 3px solid var(--border);
+        font-size: 14px;
+      }
+
+      section {
+        padding: 96px 0 0;
+      }
+      section.keep {
+        padding-top: 56px;
+      }
+      .keep-box {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 28px 32px;
+        border: 1px solid color-mix(in srgb, var(--teal) 40%, var(--border));
+        border-radius: 18px;
+        background: color-mix(in srgb, var(--teal) 8%, var(--card));
+      }
+      .keep-mark {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--teal);
+        color: #fff;
+      }
+      .keep-mark svg {
+        width: 24px;
+        height: 24px;
+      }
+      .keep-box h2 {
+        margin: 2px 0 8px;
+        font-size: clamp(20px, 3vw, 26px);
+      }
+      .keep-box p {
+        color: var(--muted);
+      }
+      .keep-box .keep-sub {
+        margin-top: 8px;
+        font-size: 14px;
+      }
+      @media (max-width: 720px) {
+        .keep-box {
+          flex-direction: column;
+          padding: 22px;
+        }
+      }
+      section.hero {
+        padding-bottom: 24px;
+      }
+      .kicker {
+        color: var(--accent-strong);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+      h2 {
+        margin: 10px 0 0;
+        font-size: clamp(26px, 4vw, 38px);
+        line-height: 1.2;
+        letter-spacing: -0.03em;
+        text-wrap: balance;
+      }
+      .sub {
+        margin-top: 12px;
+        max-width: 600px;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-top: 36px;
+      }
+      .card {
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        background: var(--card);
+      }
+      .card .ico {
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        margin-bottom: 16px;
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--accent) 14%, transparent);
+        color: var(--accent-strong);
+      }
+      .card .ico svg {
+        width: 22px;
+        height: 22px;
+      }
+      .card h3 {
+        margin: 0 0 6px;
+        font-size: 17px;
+        letter-spacing: -0.01em;
+      }
+      .card p {
+        color: var(--muted);
+        font-size: 14.5px;
+      }
+      .steps {
+        counter-reset: step;
+      }
+      .steps .card::before {
+        counter-increment: step;
+        content: counter(step);
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        margin-bottom: 14px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--on-accent);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .callout {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        padding: 16px 18px;
+        border: 1px solid var(--warn-border);
+        border-radius: 12px;
+        background: var(--warn-bg);
+        font-size: 14.5px;
+      }
+      .callout svg {
+        flex: none;
+        width: 20px;
+        height: 20px;
+        margin-top: 3px;
+      }
+      .split {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 16px;
+        margin-top: 36px;
+      }
+      .split .card h3 {
+        font-size: 18px;
+      }
+      .codebox {
+        position: relative;
+        margin-top: 14px;
+        border-radius: 10px;
+        background: var(--code-bg);
+      }
+      .codebox pre {
+        margin: 0;
+        padding: 14px 84px 14px 16px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        color: var(--code-text);
+        font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .codebox code {
+        padding: 0;
+        border: 0;
+        background: none;
+        font: inherit;
+      }
+      .copy {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 10px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #e8e4f6;
+        font: 12px inherit;
+        cursor: pointer;
+      }
+      .copy:hover {
+        background: rgba(255, 255, 255, 0.16);
+      }
+      .agents {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .agents li {
+        padding: 6px 14px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--bg-soft);
+        font-size: 14px;
+        font-weight: 600;
+      }
+
       .meta {
         color: var(--muted);
         font-size: 14px;
       }
+      #releases {
+        margin-top: 32px;
+        padding-left: 22px;
+        border-left: 2px solid var(--border);
+      }
       .release {
-        margin: 0 0 16px;
-        padding: 16px 20px;
+        position: relative;
+        margin: 0 0 20px;
+        padding: 20px 22px;
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: 14px;
+        background: var(--card);
+      }
+      .release::before {
+        content: '';
+        position: absolute;
+        left: -30px;
+        top: 26px;
+        width: 14px;
+        height: 14px;
+        border: 3px solid var(--bg);
+        border-radius: 50%;
+        background: var(--accent);
       }
       .release h3 {
-        margin: 0 0 4px;
+        margin: 0 0 2px;
         font-size: 17px;
       }
-      .release ul {
-        margin: 8px 0 0;
-      }
       .release .body {
-        margin: 8px 0 0;
+        margin-top: 10px;
         white-space: pre-wrap;
-        font-size: 15px;
+        font-size: 14.5px;
       }
       .tag {
-        margin-left: 6px;
+        margin-left: 8px;
         padding: 1px 8px;
         border-radius: 999px;
-        background: var(--surface);
+        background: var(--bg-soft);
         border: 1px solid var(--border);
         color: var(--muted);
         font-size: 12px;
         font-weight: 500;
       }
-      .secondary {
+      .more {
         display: inline-block;
-        margin-top: 12px;
+        margin-top: 4px;
         font-size: 14px;
+        font-weight: 600;
       }
+
       footer {
-        margin-top: 64px;
-        padding-top: 20px;
+        margin-top: 96px;
+        padding: 32px 0 56px;
         border-top: 1px solid var(--border);
         color: var(--muted);
-        font-size: 14px;
+        font-size: 13.5px;
+      }
+      footer p + p {
+        margin-top: 10px;
+      }
+
+      @media (max-width: 720px) {
+        .hero {
+          padding-top: 56px;
+        }
+        .showcase {
+          grid-template-columns: 1fr;
+          gap: 20px;
+          margin-top: 56px;
+        }
+        .showcase.flip .text {
+          order: 0;
+        }
+        nav a:not(.gh) {
+          display: none;
+        }
+        section {
+          padding-top: 72px;
+        }
+        .split {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
-    <main>
-      <nav aria-label="주요 메뉴">
-        <a href="#download">다운로드</a>
-        <a href="#install">설치</a>
-        <a href="#release-notes">릴리스 노트</a>
-        <a href="https://github.com/tom-kwak/desktop-with-ai">GitHub</a>
-      </nav>
-      <header id="download">
-        <svg
-          class="icon"
-          viewBox="0 0 1024 1024"
-          role="img"
-          aria-label="ReviewDesk 아이콘"
-        >
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <linearGradient id="icon-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#8E3FA8" />
+          <stop offset="1" stop-color="#4B2275" />
+        </linearGradient>
+        <symbol id="app-icon" viewBox="0 0 1024 1024">
           <rect
             x="60"
             y="60"
             width="904"
             height="904"
             rx="200"
-            fill="#26215C"
+            fill="url(#icon-bg)"
+          />
+          <g transform="translate(15 28) scale(.9)" fill="none">
+            <path
+              d="M290 262V772"
+              stroke="#AFA9EC"
+              stroke-width="56"
+              stroke-linecap="round"
+            />
+            <path
+              d="M290 590C290 430 470 480 470 322"
+              stroke="#AFA9EC"
+              stroke-width="56"
+              stroke-linecap="round"
+            />
+            <circle cx="290" cy="262" r="66" fill="#EEEDFE" />
+            <circle cx="290" cy="772" r="66" fill="#EEEDFE" />
+            <circle cx="470" cy="322" r="66" fill="#EEEDFE" />
+            <circle
+              cx="580"
+              cy="570"
+              r="178"
+              fill="#3A1F6E"
+              stroke="#5DCAA5"
+              stroke-width="66"
+            />
+            <path
+              d="M494 572L556 634L668 512"
+              stroke="#5DCAA5"
+              stroke-width="50"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M720 712L836 828"
+              stroke="#5DCAA5"
+              stroke-width="88"
+              stroke-linecap="round"
+            />
+          </g>
+          <path
+            transform="translate(790 244) scale(96)"
+            fill="#FFFFFF"
+            d="M0-1C.12-.3.3-.12 1 0 .3.12.12.3 0 1-.12.3-.3.12-1 0-.3-.12-.12-.3 0-1Z"
           />
           <path
-            d="M290 262V772"
-            stroke="#AFA9EC"
-            stroke-width="56"
-            stroke-linecap="round"
-            fill="none"
+            transform="translate(678 186) scale(42)"
+            fill="#5DCAA5"
+            d="M0-1C.12-.3.3-.12 1 0 .3.12.12.3 0 1-.12.3-.3.12-1 0-.3-.12-.12-.3 0-1Z"
           />
-          <path
-            d="M290 590C290 430 470 480 470 322"
-            stroke="#AFA9EC"
-            stroke-width="56"
-            stroke-linecap="round"
-            fill="none"
-          />
-          <circle cx="290" cy="262" r="66" fill="#EEEDFE" />
-          <circle cx="290" cy="772" r="66" fill="#EEEDFE" />
-          <circle cx="470" cy="322" r="66" fill="#EEEDFE" />
-          <circle
-            cx="580"
-            cy="570"
-            r="178"
-            fill="#26215C"
-            stroke="#5DCAA5"
-            stroke-width="66"
-          />
-          <path
-            d="M494 572L556 634L668 512"
-            stroke="#5DCAA5"
-            stroke-width="50"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            fill="none"
-          />
-          <path
-            d="M720 712L836 828"
-            stroke="#5DCAA5"
-            stroke-width="88"
-            stroke-linecap="round"
-            fill="none"
-          />
-        </svg>
-        <h1>ReviewDesk</h1>
-        <p class="lead">
-          커밋과 브랜치를 AI로 리뷰하는 데스크톱 Git 클라이언트
-        </p>
-        <a
-          class="download"
-          href="https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip"
-          id="download-link"
-          >macOS용 다운로드 (Apple Silicon)</a
-        >
-        <p class="requirement" id="download-meta">
-          Apple Silicon Mac 전용
-        </p>
-        <p class="requirement">
-          Intel Mac과 Windows용 빌드는 제공하지 않습니다.
-        </p>
-      </header>
+        </symbol>
+      </defs>
+    </svg>
 
-      <h2>할 수 있는 일</h2>
-      <ul>
-        <li>선택한 커밋이나 현재 브랜치의 변경사항을 AI로 리뷰</li>
-        <li>지난 리뷰를 커밋, 메시지, 브랜치로 검색해서 다시 보기</li>
-        <li>프로젝트별로 에이전트, 모델, 리뷰 프롬프트 설정</li>
-        <li>커밋 목록에서 브랜치가 갈라지고 합쳐지는 흐름을 그래프로 확인</li>
-      </ul>
-
-      <h2>시스템 요구 사항</h2>
-      <ul>
-        <li>Apple Silicon(M1 이상) Mac</li>
-        <li>AI 리뷰를 쓰려면 Claude Code, Codex CLI, Gemini CLI 중 하나가 필요합니다.</li>
-      </ul>
-
-      <h2 id="install">설치</h2>
-      <ol>
-        <li>다운로드한 zip의 압축을 풉니다.</li>
-        <li><code>ReviewDesk.app</code>을 응용 프로그램 폴더로 옮깁니다.</li>
-        <li>응용 프로그램 폴더에서 실행합니다.</li>
-      </ol>
-      <p class="note">
-        실행 중에는 앱을 옮기지 마세요. 옮기면 Git을 찾지 못해 동작하지
-        않습니다. 옮겼다면 앱을 완전히 종료하고 다시 실행하세요.
-      </p>
-
-      <h2>"확인되지 않은 개발자" 경고가 나올 때</h2>
-      <p>
-        이 앱은 Apple 공증을 받지 않아서 처음 실행할 때 macOS가 막을 수
-        있습니다. 출처를 신뢰하신다면 시스템 설정 → 개인정보 보호 및 보안에서
-        <strong>그래도 열기</strong>를 누르거나, 터미널에서 아래 명령을 실행한
-        뒤 다시 여세요.
-      </p>
-      <pre><code>xattr -dr com.apple.quarantine /Applications/ReviewDesk.app</code></pre>
-
-      <h2>AI 리뷰를 쓰려면</h2>
-      <p>
-        ReviewDesk는 AI 모델을 직접 호출하지 않고, 컴퓨터에 설치된 에이전트
-        CLI를 실행해서 리뷰합니다. 아래 중 하나를 설치하고 터미널에서 로그인해
-        두세요. 앱에 API 키를 입력할 필요는 없습니다.
-      </p>
-      <ul>
-        <li><a href="https://claude.com/claude-code">Claude Code</a></li>
-        <li>Codex CLI</li>
-        <li>Gemini CLI</li>
-      </ul>
-      <p class="note">
-        리뷰할 커밋 로그와 diff는 선택한 에이전트의 서비스로 전송됩니다. 설정에서
-        저장소 접근을 켜면 저장소의 파일 내용도 함께 읽힐 수 있습니다(Claude
-        Code에서만 지원).
-      </p>
-
-      <h2 id="release-notes">릴리스 노트</h2>
-      <div id="releases">
-        <p class="meta">릴리스 노트를 불러오는 중…</p>
+    <header class="topbar">
+      <div class="wrap">
+        <a class="brand" href="#top" aria-label="ReviewDesk 처음으로">
+          <svg role="img" aria-label="ReviewDesk 아이콘">
+            <use href="#app-icon" />
+          </svg>
+          ReviewDesk
+        </a>
+        <nav aria-label="주요 메뉴">
+          <a href="#features">기능</a>
+          <a href="#install">설치</a>
+          <a href="#release-notes">릴리스 노트</a>
+          <a class="gh" href="https://github.com/tom-kwak/desktop-with-ai"
+            >GitHub</a
+          >
+        </nav>
       </div>
-      <a
-        class="secondary"
-        href="https://github.com/tom-kwak/desktop-with-ai/releases"
-        >GitHub에서 모든 릴리스 보기 →</a
-      >
+    </header>
 
-      <footer>
+    <main id="top">
+      <section class="hero" id="download">
+        <div class="wrap">
+          <span class="eyebrow"><i></i>AI 리뷰가 들어간 Git 클라이언트</span>
+          <h1>히스토리를 읽고,<br /><em>커밋을 AI로 리뷰</em>하세요</h1>
+          <p class="lead">
+            GitHub Desktop의 기능은 그대로 쓰면서, 커밋과 브랜치를 AI로 리뷰하는
+            데스크톱 Git 클라이언트입니다.
+          </p>
+          <div class="cta">
+            <a
+              class="btn primary"
+              id="download-link"
+              href="https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16" />
+              </svg>
+              macOS용 다운로드
+            </a>
+            <a class="btn" href="#install">설치 방법</a>
+          </div>
+          <p class="hero-meta" id="download-meta">Apple Silicon Mac 전용</p>
+
+          <figure class="hero-shot">
+            <div class="shot" style="--x: 0; --y: 0; --w: 2000; --h: 1304">
+              <a
+                href="images/history.webp"
+                target="_blank"
+                rel="noopener"
+                aria-label="원본 크기로 보기"
+                ><img
+                  src="images/history.webp"
+                  width="2000"
+                  height="1304"
+                  alt="ReviewDesk의 히스토리 화면. 커밋 목록 왼쪽에 브랜치 그래프가 있고, 오른쪽에 변경 내용과 AI 리뷰 버튼이 있습니다."
+              /></a>
+            </div>
+            <figcaption>
+              ReviewDesk에서 이 저장소의 히스토리를 연 실제 화면
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="keep" aria-labelledby="keep-title">
+        <div class="wrap">
+          <div class="keep-box">
+            <div class="keep-mark" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            </div>
+            <div>
+              <h2 id="keep-title">GitHub Desktop 기능은 그대로 동작합니다</h2>
+              <p>
+                커밋, 브랜치, 푸시와 풀, 머지와 리베이스, 스태시, 충돌 해결까지
+                GitHub Desktop에서 하던 작업은 같은 화면, 같은 방식으로 씁니다.
+                새 기능은 기존 화면에 더해진 것이라, 쓰지 않으면 평소와
+                똑같습니다.
+              </p>
+              <p class="keep-sub">
+                앱 이름이 달라서 GitHub Desktop과 나란히 설치할 수 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features">
+        <div class="wrap">
+          <p class="kicker">GitHub Desktop에 더한 기능</p>
+          <h2>히스토리를 읽고 리뷰하는 데 필요한 것을 더했습니다</h2>
+          <p class="sub">
+            GitHub Desktop을 기반으로 하고, 아래 기능이 새로 들어갔습니다.
+            화면은 모두 실제 앱입니다.
+          </p>
+
+          <div class="showcase">
+            <div class="text">
+              <span class="new">NEW</span>
+              <h3>브랜치의 흐름이 보이는 히스토리</h3>
+              <p>
+                커밋 목록 왼쪽에 브랜치가 갈라지고 합쳐지는 그래프가 붙습니다.
+                GitHub Desktop의 히스토리는 커밋을 한 줄씩 나열할 뿐입니다.
+              </p>
+              <ul>
+                <li>
+                  커밋을 선택하면 <b>같은 브랜치에서 만든 커밋</b>만 강조됩니다.
+                </li>
+                <li>브랜치 끝 커밋에 <b>브랜치 이름 칩</b>이 붙습니다.</li>
+                <li>
+                  <b>현재 브랜치</b>의 커밋에는 점 둘레에 링이 표시됩니다.
+                </li>
+              </ul>
+            </div>
+            <div class="shot" style="--x: 0; --y: 190; --w: 795; --h: 700">
+              <a
+                href="images/history.webp"
+                target="_blank"
+                rel="noopener"
+                aria-label="원본 크기로 보기"
+                ><img
+                  src="images/history.webp"
+                  width="2000"
+                  height="1304"
+                  loading="lazy"
+                  alt="커밋 목록과 브랜치 그래프. 브랜치 이름 칩과 선택한 브랜치의 강조가 보입니다."
+              /></a>
+            </div>
+          </div>
+
+          <div class="showcase flip">
+            <div class="text">
+              <span class="new">NEW</span>
+              <h3>브랜치별, 커밋별로 리뷰합니다</h3>
+              <p>
+                커밋 하나만 볼지, 브랜치 전체를 볼지 고를 수 있습니다. 결과는
+                마크다운으로 정리되어 바로 읽을 수 있습니다.
+              </p>
+              <ul>
+                <li>
+                  <b>Review 1 commit</b> 선택한 커밋의 변경사항을 리뷰합니다.
+                </li>
+                <li>
+                  <b>Review branch</b> 현재 브랜치의 변경사항을 한 번에
+                  리뷰합니다.
+                </li>
+                <li>
+                  컴퓨터에 설치된 Claude Code, Codex CLI, Gemini CLI를 실행하고,
+                  에이전트와 모델은 직접 고릅니다.
+                </li>
+                <li>
+                  저장소 파일 읽기를 켜면 diff 밖의 코드도 참고합니다(Claude
+                  Code만).
+                </li>
+              </ul>
+            </div>
+            <div class="shot" style="--x: 527; --y: 43; --w: 950; --h: 620">
+              <a
+                href="images/review.webp"
+                target="_blank"
+                rel="noopener"
+                aria-label="원본 크기로 보기"
+                ><img
+                  src="images/review.webp"
+                  width="2000"
+                  height="1304"
+                  loading="lazy"
+                  alt="AI Commit Review 창. 요약, 주요 변경, 위험 요소가 한국어로 정리되어 있습니다."
+              /></a>
+            </div>
+          </div>
+
+          <div class="showcase">
+            <div class="text">
+              <span class="new">NEW</span>
+              <h3>리뷰 템플릿을 내 방식대로</h3>
+              <p>
+                리뷰 프롬프트를 템플릿으로 저장하고 바꿀 수 있어서, 팀이나
+                프로젝트의 기준에 맞는 리뷰를 받습니다.
+              </p>
+              <ul>
+                <li>
+                  프롬프트에 <b>이름을 붙여</b> 여러 개를 만들고, 리뷰할 때
+                  고릅니다.
+                </li>
+                <li>
+                  <b>기본 프롬프트도 수정</b>할 수 있고, 언제든 처음 상태로
+                  되돌립니다.
+                </li>
+                <li>
+                  리뷰 창 위쪽에 어떤 에이전트, 모델, 프롬프트로 리뷰했는지
+                  표시됩니다.
+                </li>
+              </ul>
+            </div>
+            <div class="shot" style="--x: 796; --y: 90; --w: 1204; --h: 300">
+              <a
+                href="images/history.webp"
+                target="_blank"
+                rel="noopener"
+                aria-label="원본 크기로 보기"
+                ><img
+                  src="images/history.webp"
+                  width="2000"
+                  height="1304"
+                  loading="lazy"
+                  alt="커밋 상세 위쪽의 설정, Past reviews, Review branch, Review 1 commit 버튼."
+              /></a>
+            </div>
+          </div>
+
+          <div class="showcase flip">
+            <div class="text">
+              <span class="new">NEW</span>
+              <h3>리뷰 히스토리를 관리합니다</h3>
+              <p>
+                받은 리뷰는 앱 안에 저장되어, 나중에 다시 찾아보고 정리할 수
+                있습니다.
+              </p>
+              <ul>
+                <li>
+                  <b>Past reviews</b> 지난 리뷰를 모아 보고, 커밋, 메시지,
+                  브랜치로 찾습니다.
+                </li>
+                <li>
+                  같은 커밋의 리뷰가 여러 번이면 <b>History</b> 목록에서 골라
+                  비교하고, <b>Review again</b>으로 다시 받습니다.
+                </li>
+                <li>필요 없는 리뷰는 지워서 정리합니다.</li>
+              </ul>
+            </div>
+            <div class="shot" style="--x: 527; --y: 140; --w: 950; --h: 132">
+              <a
+                href="images/review.webp"
+                target="_blank"
+                rel="noopener"
+                aria-label="원본 크기로 보기"
+                ><img
+                  src="images/review.webp"
+                  width="2000"
+                  height="1304"
+                  loading="lazy"
+                  alt="AI Commit Review 창 위쪽. 사용한 에이전트와 프롬프트, 그리고 지난 리뷰를 고르는 History 목록과 Review again 버튼."
+              /></a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install">
+        <div class="wrap">
+          <p class="kicker">설치</p>
+          <h2>세 단계면 끝납니다</h2>
+          <p class="sub">Apple Silicon(M1 이상) Mac에서 사용할 수 있습니다.</p>
+          <div class="grid steps">
+            <div class="card">
+              <h3>압축 풀기</h3>
+              <p>다운로드한 zip의 압축을 풉니다.</p>
+            </div>
+            <div class="card">
+              <h3>옮기기</h3>
+              <p>
+                <code>ReviewDesk.app</code>을 응용 프로그램 폴더로 옮깁니다.
+              </p>
+            </div>
+            <div class="card">
+              <h3>실행하기</h3>
+              <p>응용 프로그램 폴더에서 실행합니다.</p>
+            </div>
+          </div>
+          <div class="callout" role="note">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"
+              />
+            </svg>
+            <p>
+              실행 중에는 앱을 옮기지 마세요. 옮기면 Git을 찾지 못해 동작하지
+              않습니다. 옮겼다면 앱을 완전히 종료하고 다시 실행하세요.
+            </p>
+          </div>
+
+          <div class="split">
+            <div class="card">
+              <h3>"확인되지 않은 개발자" 경고가 나올 때</h3>
+              <p>
+                이 앱은 Apple 공증을 받지 않아서 처음 실행할 때 macOS가 막을 수
+                있습니다. 출처를 신뢰하신다면 시스템 설정 → 개인정보 보호 및
+                보안에서 <strong>그래도 열기</strong>를 누르거나, 터미널에서
+                아래 명령을 실행한 뒤 다시 여세요.
+              </p>
+              <div class="codebox">
+                <pre><code id="xattr">xattr -dr com.apple.quarantine /Applications/ReviewDesk.app</code></pre>
+                <button class="copy" type="button" id="copy-xattr">복사</button>
+              </div>
+            </div>
+            <div class="card">
+              <h3>AI 리뷰를 쓰려면</h3>
+              <p>
+                ReviewDesk는 AI 모델을 직접 호출하지 않고, 컴퓨터에 설치된
+                에이전트 CLI를 실행해서 리뷰합니다. 아래 중 하나를 설치하고
+                터미널에서 로그인해 두세요. 앱에 API 키를 입력할 필요는
+                없습니다.
+              </p>
+              <ul class="agents">
+                <li>
+                  <a href="https://claude.com/claude-code">Claude Code</a>
+                </li>
+                <li>Codex CLI</li>
+                <li>Gemini CLI</li>
+              </ul>
+              <p class="meta" style="margin-top: 14px">
+                리뷰할 커밋 로그와 diff는 선택한 에이전트의 서비스로 전송됩니다.
+                설정에서 저장소 접근을 켜면 저장소의 파일 내용도 함께 읽힐 수
+                있습니다(Claude Code에서만 지원).
+              </p>
+            </div>
+          </div>
+          <p class="meta" style="margin-top: 16px">
+            Intel Mac과 Windows용 빌드는 제공하지 않습니다.
+          </p>
+        </div>
+      </section>
+
+      <section id="release-notes">
+        <div class="wrap">
+          <p class="kicker">릴리스 노트</p>
+          <h2>바뀐 내용</h2>
+          <div id="releases">
+            <p class="meta">릴리스 노트를 불러오는 중…</p>
+          </div>
+          <a
+            class="more"
+            href="https://github.com/tom-kwak/desktop-with-ai/releases"
+            >GitHub에서 모든 릴리스 보기 →</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
         <p>
           ReviewDesk는
           <a href="https://github.com/desktop/desktop">GitHub Desktop</a>을
@@ -345,88 +1074,102 @@
             >모든 릴리스</a
           >
         </p>
-      </footer>
-    </main>
-    <script>
-      (function () {
-        var repo = 'tom-kwak/desktop-with-ai';
-        var box = document.getElementById('releases');
+      </div>
+    </footer>
 
-        function fallback() {
-          box.innerHTML = '';
-          var p = document.createElement('p');
-          p.className = 'meta';
-          p.textContent =
-            '릴리스 노트를 불러오지 못했습니다. 아래 링크에서 확인해 주세요.';
-          box.appendChild(p);
+    <script>
+      ;(function () {
+        var repo = 'tom-kwak/desktop-with-ai'
+        var box = document.getElementById('releases')
+
+        function message(text) {
+          box.innerHTML = ''
+          var p = document.createElement('p')
+          p.className = 'meta'
+          p.textContent = text
+          box.appendChild(p)
         }
 
         function render(release) {
-          var el = document.createElement('article');
-          el.className = 'release';
-          var h = document.createElement('h3');
-          h.textContent = release.name || release.tag_name;
+          var el = document.createElement('article')
+          el.className = 'release'
+          var h = document.createElement('h3')
+          h.textContent = release.name || release.tag_name
           if (release.prerelease) {
-            var t = document.createElement('span');
-            t.className = 'tag';
-            t.textContent = '프리릴리스';
-            h.appendChild(t);
+            var t = document.createElement('span')
+            t.className = 'tag'
+            t.textContent = '프리릴리스'
+            h.appendChild(t)
           }
-          el.appendChild(h);
-          var d = document.createElement('div');
-          d.className = 'meta';
+          el.appendChild(h)
+          var d = document.createElement('div')
+          d.className = 'meta'
           d.textContent = new Date(release.published_at).toLocaleDateString(
             'ko-KR',
             { year: 'numeric', month: 'long', day: 'numeric' }
-          );
-          el.appendChild(d);
-          var body = (release.body || '').trim();
+          )
+          el.appendChild(d)
+          var body = (release.body || '').trim()
           if (body) {
-            var b = document.createElement('div');
-            b.className = 'body';
-            b.textContent = body;
-            el.appendChild(b);
+            var b = document.createElement('div')
+            b.className = 'body'
+            b.textContent = body
+            el.appendChild(b)
           }
-          return el;
+          return el
         }
 
         fetch('https://api.github.com/repos/' + repo + '/releases?per_page=10')
           .then(function (r) {
-            if (!r.ok) throw new Error(r.status);
-            return r.json();
+            if (!r.ok) throw new Error(r.status)
+            return r.json()
           })
           .then(function (releases) {
             releases = releases.filter(function (r) {
-              return !r.draft;
-            });
+              return !r.draft
+            })
             if (!releases.length) {
-              box.innerHTML = '';
-              var p = document.createElement('p');
-              p.className = 'meta';
-              p.textContent = '아직 릴리스가 없습니다.';
-              box.appendChild(p);
-              return;
+              message('아직 릴리스가 없습니다.')
+              return
             }
-            box.innerHTML = '';
+            box.innerHTML = ''
             releases.forEach(function (r) {
-              box.appendChild(render(r));
-            });
+              box.appendChild(render(r))
+            })
 
-            var latest = releases[0];
+            var latest = releases[0]
             var asset = (latest.assets || []).filter(function (a) {
-              return /arm64\.zip$/.test(a.name);
-            })[0];
+              return /arm64\.zip$/.test(a.name)
+            })[0]
             if (asset) {
-              var mb = Math.round(asset.size / 1048576);
+              var mb = Math.round(asset.size / 1048576)
               document.getElementById('download-meta').textContent =
-                latest.tag_name.replace(/^release-/, '') +
+                latest.tag_name.replace(/^(release|reviewdesk)-/, '') +
                 ' · Apple Silicon Mac 전용 · 약 ' +
                 mb +
-                'MB';
+                'MB'
             }
           })
-          .catch(fallback);
-      })();
+          .catch(function () {
+            message(
+              '릴리스 노트를 불러오지 못했습니다. 아래 링크에서 확인해 주세요.'
+            )
+          })
+
+        var copy = document.getElementById('copy-xattr')
+        copy.addEventListener('click', function () {
+          var text = document.getElementById('xattr').textContent
+          if (!navigator.clipboard) {
+            return
+          }
+          navigator.clipboard.writeText(text).then(function () {
+            copy.textContent = '복사됨'
+            setTimeout(function () {
+              copy.textContent = '복사'
+            }, 1600)
+          })
+        })
+      })()
     </script>
   </body>
 </html>
