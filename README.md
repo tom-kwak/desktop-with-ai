@@ -124,7 +124,21 @@ RELEASE_CHANNEL=development yarn package
 `reviewdesk-v1.0.0` 같은 태그를 푸시하면
 [GitHub Actions](.github/workflows/reviewdesk-release.yml)가 앱을 빌드해 Release에 올립니다.
 [다운로드 페이지](https://tom-kwak.github.io/desktop-with-ai/)의 소스는
-[`website/`](website/)에 있고, `master`에 푸시하면 자동으로 배포됩니다.
+[`website/`](website/)에 있고, `main`에 푸시하면 자동으로 배포됩니다.
+
+## 브랜치와 릴리스
+
+| 브랜치 | 역할 |
+| --- | --- |
+| `main` | 제품 브랜치. 릴리스는 여기서만 나갑니다. |
+| `develop` | 기능이 합쳐지고 검증되는 브랜치. 모든 개발의 기준입니다. |
+| `feature/{기능명}` | 개발 브랜치. `develop`에서 만들어 PR로 `develop`에 합칩니다. |
+
+`develop`을 PR로 `main`에 합친 뒤, `main`의 커밋에 `reviewdesk-vX.Y.Z` 태그를 푸시하면 앱이
+빌드되어 Release에 올라갑니다. `main`에 없는 커밋에 붙인 태그는 빌드가 실패합니다.
+
+[ReviewDesk CI](.github/workflows/reviewdesk-ci.yml)가 `develop`과 `main`으로 가는 PR을 타입
+체크, 서식, 린트, 테스트로 확인합니다.
 
 ## 코드 구조
 
