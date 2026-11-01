@@ -2,7 +2,7 @@
 
 커밋과 브랜치를 AI로 리뷰하는 데스크톱 Git 클라이언트입니다. [GitHub Desktop](https://github.com/desktop/desktop)을 포크해서 AI 리뷰와 커밋 그래프를 더했고, 기존 기능은 그대로 동작합니다.
 
-**[소개 페이지](https://tom-kwak.github.io/desktop-with-ai/)** · [다운로드](https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/ReviewDesk-arm64.zip) · [릴리스 노트](https://github.com/tom-kwak/desktop-with-ai/releases)
+**[소개 페이지](https://tom-kwak.github.io/desktop-with-ai/)** · [설치](#quick-start) · [릴리스 노트](https://github.com/tom-kwak/desktop-with-ai/releases)
 
 > 개인 포크이며 GitHub의 공식 제품이 아닙니다. 문제는 GitHub Desktop이 아니라 [이 저장소](https://github.com/tom-kwak/desktop-with-ai/issues)에 알려 주세요.
 
