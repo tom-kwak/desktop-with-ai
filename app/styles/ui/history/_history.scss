@@ -1,5 +1,7 @@
 @import '../../mixins';
 
+@import 'commit-graph';
+
 /** A React component holding the currently selected repository's history */
 #history {
   display: flex;
@@ -144,5 +146,28 @@
     .ref-component {
       word-break: break-word;
     }
+  }
+}
+
+.ai-analysis-bar {
+  flex-grow: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-half);
+  padding: var(--spacing-half) var(--spacing);
+  border-bottom: var(--base-border);
+}
+
+// Wraps the blank slates so the AI bar stays available without a selection.
+.ai-history-empty {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+
+  > .blankslate,
+  > #multiple-commits-selected {
+    flex: 1;
   }
 }

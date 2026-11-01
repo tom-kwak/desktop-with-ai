@@ -274,6 +274,7 @@ export class CompareSidebar extends React.Component<
         onCancelKeyboardReorder={this.onCancelKeyboardReorder}
         onSquash={this.onSquash}
         emptyListMessage={emptyListMessage}
+        showCommitGraph={formState.kind === HistoryTabMode.History}
         onCompareListScrolled={this.props.onCompareListScrolled}
         compareListScrollTop={this.props.compareListScrollTop}
         tagsToPush={this.props.tagsToPush ?? []}

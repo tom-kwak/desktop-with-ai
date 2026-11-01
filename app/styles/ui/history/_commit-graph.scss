@@ -1,0 +1,23 @@
+/** A commit in the history list next to its part of the commit graph */
+.commit-with-graph {
+  display: flex;
+  width: 100%;
+  height: 100%;
+
+  .draggable {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.commit-graph-cell {
+  flex-shrink: 0;
+  // Keep clear of the edge of the list.
+  margin-left: var(--spacing-half);
+
+  path,
+  line {
+    fill: none;
+    stroke-width: 1.5;
+  }
+}

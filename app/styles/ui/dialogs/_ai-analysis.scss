@@ -1,0 +1,165 @@
+dialog#ai-analysis {
+  width: 720px;
+
+  // The rendered markdown sits in an iframe sized to its content, so the
+  // scrolling has to happen out here.
+  .ai-analysis-text {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .ai-analysis-meta {
+    margin-top: 0;
+    color: var(--text-secondary-color);
+  }
+
+  .ai-review-history {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing);
+
+    // The history list takes the room the button doesn't need.
+    .select-component {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .ai-analysis-error {
+    color: var(--error-color);
+  }
+}
+
+dialog#ai-settings {
+  width: 560px;
+
+  .ai-settings-help {
+    margin: 0;
+    color: var(--text-secondary-color);
+  }
+
+  .ai-settings-prompt-actions {
+    display: flex;
+    gap: var(--spacing-half);
+  }
+}
+
+dialog#ai-past-reviews {
+  width: 960px;
+  max-width: 95vw;
+
+  .ai-analysis-meta {
+    margin-top: 0;
+    color: var(--text-secondary-color);
+  }
+
+  .ai-analysis-error {
+    color: var(--error-color);
+  }
+
+  .ai-past-filter {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing);
+
+    // The text filter takes the room the other controls don't need.
+    .text-box-component {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .ai-past-layout {
+    display: flex;
+    gap: var(--spacing);
+    min-height: 0;
+  }
+
+  .ai-past-list {
+    flex: 0 0 280px;
+    max-height: 60vh;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    overflow-y: auto;
+    border: var(--base-border);
+    border-radius: var(--border-radius);
+  }
+
+  .ai-past-item {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: var(--spacing-half) var(--spacing);
+    border: none;
+    border-bottom: var(--base-border);
+    background: transparent;
+    color: var(--text-color);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--box-hover-background-color);
+    }
+
+    &.selected {
+      background: var(--box-selected-background-color);
+    }
+
+    .ai-past-item-title,
+    .ai-past-item-meta {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .ai-past-item-meta {
+      color: var(--text-secondary-color);
+      font-size: var(--font-size-sm);
+    }
+  }
+
+  .ai-past-detail {
+    flex: 1;
+    min-width: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+
+    h3 {
+      margin-top: 0;
+    }
+
+    // The detail pane scrolls as a whole, so the review doesn't scroll itself.
+    .ai-analysis-text {
+      max-height: none;
+      overflow: visible;
+    }
+  }
+
+  .ai-past-commits {
+    margin-bottom: var(--spacing);
+
+    details {
+      margin-bottom: var(--spacing-half);
+    }
+
+    summary {
+      cursor: pointer;
+    }
+  }
+
+  .ai-past-message {
+    margin: var(--spacing-half) 0 0;
+    padding: var(--spacing-half) var(--spacing);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: var(--font-family-sans-serif);
+    background: var(--box-hover-background-color);
+    border-radius: var(--border-radius);
+    user-select: text;
+  }
+
+  .ai-past-actions {
+    margin-top: var(--spacing);
+  }
+}
