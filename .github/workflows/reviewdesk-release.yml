@@ -1,7 +1,9 @@
 name: ReviewDesk release
 
 # Builds the macOS app and attaches it to a GitHub release, which is where the
-# download page links to. Push a tag such as reviewdesk-v1.0.0 to run it.
+# download page links to. Push a tag such as reviewdesk-v1.0.0 to run it. The tag
+# has to be on a commit that is on main: only what has been merged into main is
+# released.
 on:
   push:
     tags:
@@ -21,6 +23,18 @@ jobs:
       # the app update itself to the official GitHub Desktop.
       RELEASE_CHANNEL: development
     steps:
+      - name: Check that the tagged commit is on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # "identical" or "behind" means the commit is main or one of its
+          # ancestors; "ahead" and "diverged" mean it isn't on main.
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq .status)
+          echo "$GITHUB_REF_NAME compared to main: $status"
+          if [ "$status" != "identical" ] && [ "$status" != "behind" ]; then
+            echo "::error::$GITHUB_REF_NAME isn't on main. Merge the commit into main and tag it there."
+            exit 1
+          fi
       - uses: actions/checkout@v7
         with:
           submodules: recursive
