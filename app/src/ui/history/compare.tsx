@@ -219,29 +219,58 @@ export class CompareSidebar extends React.Component<
   /**
    * The names of the branches by the sha of the commit they point at. A remote
    * branch is left out when a local one of the same name is there already.
+   * The compare state doesn't list the current branch, so it's added here.
    */
-  private getBranchTips = memoizeOne((branches: ReadonlyArray<Branch>) => {
-    const localNames = new Set(
-      branches.filter(b => b.type === BranchType.Local).map(b => b.name)
-    )
-    const tips = new Map<string, string[]>()
+  private getBranchTips = memoizeOne(
+    (branches: ReadonlyArray<Branch>, currentBranch: Branch | null) => {
+      const all =
+        currentBranch === null ? branches : [currentBranch, ...branches]
+      const localNames = new Set(
+        all.filter(b => b.type === BranchType.Local).map(b => b.name)
+      )
+      const tips = new Map<string, string[]>()
 
-    for (const branch of branches) {
-      if (
-        branch.isDesktopForkRemoteBranch ||
-        (branch.type === BranchType.Remote &&
-          localNames.has(branch.nameWithoutRemote))
-      ) {
-        continue
+      for (const branch of all) {
+        if (
+          branch.isDesktopForkRemoteBranch ||
+          (branch.type === BranchType.Remote &&
+            localNames.has(branch.nameWithoutRemote))
+        ) {
+          continue
+        }
+
+        const names = tips.get(branch.tip.sha) ?? []
+        names.push(branch.name)
+        tips.set(branch.tip.sha, names)
       }
 
-      const names = tips.get(branch.tip.sha) ?? []
-      names.push(branch.name)
-      tips.set(branch.tip.sha, names)
+      return tips
     }
+  )
 
-    return tips
-  })
+  /**
+   * The names of the local branches by the sha of the commit they point at.
+   * The commits of a branch are only worked out for these, as the branches of
+   * other remotes would take in the whole history of what they were forked from.
+   */
+  private getLocalBranchTips = memoizeOne(
+    (branches: ReadonlyArray<Branch>, currentBranch: Branch | null) => {
+      const tips = new Map<string, string[]>()
+
+      for (const branch of currentBranch === null
+        ? branches
+        : [currentBranch, ...branches]) {
+        if (branch.type === BranchType.Local) {
+          tips.set(branch.tip.sha, [
+            ...(tips.get(branch.tip.sha) ?? []),
+            branch.name,
+          ])
+        }
+      }
+
+      return tips
+    }
+  )
 
   private renderCommitList() {
     const { formState, commitSHAs } = this.props.compareState
@@ -303,7 +332,14 @@ export class CompareSidebar extends React.Component<
         onSquash={this.onSquash}
         emptyListMessage={emptyListMessage}
         showCommitGraph={formState.kind === HistoryTabMode.History}
-        branchTips={this.getBranchTips(this.props.compareState.branches)}
+        branchTips={this.getBranchTips(
+          this.props.compareState.branches,
+          this.props.currentBranch
+        )}
+        localBranchTips={this.getLocalBranchTips(
+          this.props.compareState.branches,
+          this.props.currentBranch
+        )}
         onCompareListScrolled={this.props.onCompareListScrolled}
         compareListScrollTop={this.props.compareListScrollTop}
         tagsToPush={this.props.tagsToPush ?? []}
