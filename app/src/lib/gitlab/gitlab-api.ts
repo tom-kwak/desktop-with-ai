@@ -87,18 +87,24 @@ export async function fetchGitLabUser(
     )
   }
 
-  if (response.status === 403) {
-    throw new GitLabSignInError(
-      'insufficient-scope',
-      'This token is missing a required scope. Create a token with the api scope.'
-    )
-  }
-
   let body: unknown
   try {
     body = await response.json()
   } catch {
     body = undefined
+  }
+
+  if (response.status === 403) {
+    // Fine-grained tokens (GitLab 18.x and later) say which permission is
+    // missing in `error_description`; pass that on.
+    const description =
+      isRecord(body) && typeof body.error_description === 'string'
+        ? ` GitLab says: ${body.error_description}`
+        : ''
+    throw new GitLabSignInError(
+      'insufficient-scope',
+      `This token can't read your GitLab user. Use a token with the api scope, or a fine-grained token with the User: Read permission.${description}`
+    )
   }
 
   if (response.status !== 200) {

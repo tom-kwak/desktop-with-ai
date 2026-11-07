@@ -75,6 +75,27 @@ describe('fetchGitLabUser', () => {
     )
   })
 
+  it("passes on GitLab's explanation for a fine-grained token", async () => {
+    const description =
+      'Access denied: This operation requires a fine-grained personal access token with the following user permissions: [User: Read].'
+    try {
+      await fetchGitLabUser(
+        'https://gitlab.example.com',
+        'glpat-x',
+        respond(403, {
+          error: 'insufficient_granular_scope',
+          error_description: description,
+        })
+      )
+      assert.fail('expected fetchGitLabUser to throw')
+    } catch (e) {
+      assert.ok(e instanceof GitLabSignInError)
+      assert.equal(e.kind, 'insufficient-scope')
+      assert.ok(e.message.includes('User: Read'))
+      assert.ok(e.message.endsWith(description))
+    }
+  })
+
   it('reports an unreachable server', async () => {
     assert.equal(
       await signInErrorKind(async () => {

@@ -82,7 +82,8 @@ export class GitLabSignInForm extends React.Component<
         />
 
         <p className="gitlab-token-help">
-          {this.renderTokenSettingsLink()} with the <code>api</code> scope. The
+          {this.renderTokenSettingsLink()} with the <code>api</code> scope, or a
+          fine-grained token with the <code>User: Read</code> permission. The
           token is stored in your system keychain.
         </p>
 
