@@ -34,7 +34,10 @@ import memoizeOne from 'memoize-one'
 import { Disposable } from 'event-kit'
 import { CloneGitLabRepository } from '../gitlab/clone-gitlab-repository'
 import { IGitLabProject } from '../../lib/gitlab/gitlab-projects'
-import { getGitLabAccountsStore } from '../../lib/gitlab/gitlab-accounts'
+import {
+  getGitLabAccountsStore,
+  getGitLabSettings,
+} from '../../lib/gitlab/gitlab-accounts'
 
 interface ICloneRepositoryProps {
   readonly dispatcher: Dispatcher
@@ -112,8 +115,11 @@ interface ICloneRepositoryState {
   /** The persisted state of the GitLab tab. */
   readonly gitLabTabState: IGitLabTabState
 
-  /** Whether a GitLab account is signed in, which shows the GitLab tab. */
-  readonly hasGitLabAccount: boolean
+  /**
+   * Whether to show the GitLab tab: GitLab features are switched on and a
+   * GitLab account is signed in.
+   */
+  readonly showGitLabTab: boolean
 }
 
 /**
@@ -161,6 +167,14 @@ interface IGitHubTabState extends IBaseTabState {
   readonly selectedItem: IAPIRepository | null
 }
 
+/** The GitLab tab needs GitLab switched on and a signed-in GitLab account. */
+function shouldShowGitLabTab() {
+  return (
+    getGitLabSettings().isEnabled() &&
+    getGitLabAccountsStore().getAll().length > 0
+  )
+}
+
 /** Persisted state for the GitLab tab. */
 interface IGitLabTabState extends IBaseTabState {
   readonly kind: 'gitLabTabState'
@@ -185,7 +199,7 @@ export class CloneRepository extends React.Component<
     }
   )
 
-  private gitLabAccountsSubscription: Disposable | null = null
+  private gitLabSubscriptions = new Array<Disposable>()
 
   private getAccountsForTab = memoizeOne(
     (tab: CloneRepositoryTab, accounts: ReadonlyArray<Account>) =>
@@ -239,7 +253,7 @@ export class CloneRepository extends React.Component<
         // A URL handed to the dialog belongs in the URL tab, not a project list.
         url: '',
       },
-      hasGitLabAccount: getGitLabAccountsStore().getAll().length > 0,
+      showGitLabTab: shouldShowGitLabTab(),
     }
 
     this.initializePath()
@@ -252,7 +266,7 @@ export class CloneRepository extends React.Component<
   private get selectedTab(): CloneRepositoryTab {
     const { selectedTab } = this.props
     return selectedTab === CloneRepositoryTab.GitLab &&
-      !this.state.hasGitLabAccount
+      !this.state.showGitLabTab
       ? CloneRepositoryTab.DotCom
       : selectedTab
   }
@@ -270,8 +284,11 @@ export class CloneRepository extends React.Component<
   }
 
   public componentDidMount() {
-    this.gitLabAccountsSubscription = getGitLabAccountsStore().onDidUpdate(
-      accounts => this.setState({ hasGitLabAccount: accounts.length > 0 })
+    const updateGitLabTab = () =>
+      this.setState({ showGitLabTab: shouldShowGitLabTab() })
+    this.gitLabSubscriptions.push(
+      getGitLabAccountsStore().onDidUpdate(updateGitLabTab),
+      getGitLabSettings().onDidChange(updateGitLabTab)
     )
 
     const initialURL = this.props.initialURL
@@ -283,8 +300,8 @@ export class CloneRepository extends React.Component<
   }
 
   public componentWillUnmount(): void {
-    this.gitLabAccountsSubscription?.dispose()
-    this.gitLabAccountsSubscription = null
+    this.gitLabSubscriptions.forEach(s => s.dispose())
+    this.gitLabSubscriptions = []
     this.checkIsTopMostDialog(false)
   }
 
@@ -328,7 +345,7 @@ export class CloneRepository extends React.Component<
           <span id="dotcom-tab">GitHub.com</span>
           <span id="enterprise-tab">GitHub Enterprise</span>
           <span id="url-tab">URL</span>
-          {this.state.hasGitLabAccount && <span id="gitlab-tab">GitLab</span>}
+          {this.state.showGitLabTab && <span id="gitlab-tab">GitLab</span>}
         </TabBar>
 
         {error ? <DialogError>{error.message}</DialogError> : null}

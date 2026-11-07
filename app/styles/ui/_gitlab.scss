@@ -27,3 +27,105 @@
     }
   }
 }
+
+#desktop-app-toolbar .gitlab-merge-requests-button {
+  width: 230px;
+}
+
+#gitlab-merge-requests {
+  width: 640px;
+
+  .gitlab-mr-project,
+  .gitlab-mr-current,
+  .gitlab-mr-footer,
+  .gitlab-mr-comment-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+  }
+
+  .gitlab-mr-project {
+    justify-content: space-between;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .gitlab-mr-current {
+    justify-content: space-between;
+    margin: var(--spacing) 0;
+    padding: var(--spacing);
+    border: var(--base-border);
+    border-radius: var(--border-radius);
+  }
+
+  .gitlab-mr-items,
+  .gitlab-mr-comments {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .gitlab-mr-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding: var(--spacing-half) var(--spacing);
+    border: none;
+    border-bottom: var(--base-border);
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus {
+      background-color: var(--box-hover-background-color);
+    }
+  }
+
+  .gitlab-mr-item-title {
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .gitlab-mr-item-meta {
+    color: var(--text-secondary-color);
+    font-size: var(--font-size-sm);
+  }
+
+  .gitlab-mr-comments li {
+    padding: var(--spacing-half) 0;
+    border-bottom: var(--base-border);
+  }
+
+  .gitlab-mr-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin: var(--spacing-half) 0;
+  }
+
+  .gitlab-mr-create .select-component,
+  .gitlab-mr-create .text-box-component,
+  .gitlab-mr-create .text-area-component {
+    margin-bottom: var(--spacing);
+  }
+
+  .gitlab-mr-comment-actions {
+    justify-content: flex-end;
+    margin-top: var(--spacing-half);
+  }
+
+  .gitlab-mr-footer {
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .gitlab-mr-error {
+    color: var(--error-color);
+  }
+
+  .gitlab-mr-loading {
+    color: var(--text-secondary-color);
+  }
+}

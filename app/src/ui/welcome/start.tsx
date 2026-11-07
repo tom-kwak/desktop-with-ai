@@ -8,6 +8,7 @@ import { Button } from '../lib/button'
 import { Loading } from '../lib/loading'
 import { BrowserRedirectMessage } from '../lib/authentication-form'
 import { SamplesURL } from '../../lib/stats'
+import { isGitLabEnabled } from '../../lib/gitlab/gitlab-accounts'
 
 /**
  * The URL to the sign-up page on GitHub.com. Used in conjunction
@@ -67,7 +68,11 @@ export class Start extends React.Component<IStartProps, {}> {
                 <Button onClick={this.signInToEnterprise}>
                   Sign in to GitHub Enterprise
                 </Button>
-                <Button onClick={this.signInToGitLab}>Sign in to GitLab</Button>
+                {isGitLabEnabled() && (
+                  <Button onClick={this.signInToGitLab}>
+                    Sign in to GitLab
+                  </Button>
+                )}
               </>
             )}
           </div>
