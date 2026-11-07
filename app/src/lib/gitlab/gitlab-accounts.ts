@@ -1,7 +1,9 @@
 import { TokenStore } from '../stores/token-store'
 import { GitLabAccountsStore } from './gitlab-accounts-store'
+import { GitLabProjectsStore } from './gitlab-projects'
 
 let store: GitLabAccountsStore | null = null
+let projectsStore: GitLabProjectsStore | null = null
 
 /**
  * The app's GitLab accounts, backed by local storage and the system keychain.
@@ -14,4 +16,17 @@ export function getGitLabAccountsStore(): GitLabAccountsStore {
     store = new GitLabAccountsStore(localStorage, TokenStore)
   }
   return store
+}
+
+/** The project lists of the signed-in GitLab accounts. */
+export function getGitLabProjectsStore(): GitLabProjectsStore {
+  if (projectsStore === null) {
+    const accounts = getGitLabAccountsStore()
+    const projects = new GitLabProjectsStore(account =>
+      accounts.getToken(account)
+    )
+    accounts.onDidUpdate(all => projects.retainOnly(all))
+    projectsStore = projects
+  }
+  return projectsStore
 }
