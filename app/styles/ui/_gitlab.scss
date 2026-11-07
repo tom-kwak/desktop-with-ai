@@ -1,0 +1,29 @@
+// GitLab sign-in, shared by the welcome flow and Preferences > Accounts.
+
+.gitlab-sign-in-form {
+  .gitlab-token-help {
+    color: var(--text-secondary-color);
+    margin: 0 0 var(--spacing);
+  }
+}
+
+#welcome #sign-in-gitlab {
+  .gitlab-sign-in-form {
+    margin-top: var(--spacing-double);
+  }
+
+  .actions {
+    display: inline-block;
+    margin-top: var(--spacing);
+  }
+}
+
+.accounts-tab .gitlab-accounts {
+  .gitlab-sign-in-form {
+    margin-top: var(--spacing);
+
+    .actions .button-component {
+      margin-right: var(--spacing);
+    }
+  }
+}
