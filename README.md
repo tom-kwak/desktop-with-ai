@@ -115,9 +115,11 @@ GitHub Desktop 자체의 방향은 [이 문서](docs/process/what-is-desktop.md)
 환경 준비는 [`setup.md`](./docs/contributing/setup.md)를 따릅니다.
 
 ```bash
-yarn && yarn build:dev && yarn start        # 개발판 실행
-RELEASE_CHANNEL=development yarn build:prod && RELEASE_CHANNEL=development yarn package   # dist/에 앱 생성
+npm ci && npm run build:dev && npm start        # 개발판 실행
+RELEASE_CHANNEL=development npm run build:prod && RELEASE_CHANNEL=development npm run package   # dist/에 앱 생성
 ```
+
+Node.js 22.12 이상과 npm 11.17 이상이 필요합니다.
 
 `RELEASE_CHANNEL=development`를 빼면 앱이 Apple 서명을 요구하고 공식 GitHub Desktop으로
 자동 업데이트될 수 있습니다.
