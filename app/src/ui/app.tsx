@@ -3957,8 +3957,12 @@ export class App extends React.Component<IAppProps, IAppState> {
       return null
     }
 
+    const tip = selection.state.branchesState.tip
     return (
-      <GitLabMergeRequestsToolbarButton repository={selection.repository} />
+      <GitLabMergeRequestsToolbarButton
+        repository={selection.repository}
+        branchName={tip.kind === TipState.Valid ? tip.branch.name : null}
+      />
     )
   }
 

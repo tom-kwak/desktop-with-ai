@@ -87,9 +87,24 @@ const pipelineIcons: Record<string, typeof octicons.check> = {
   waiting_for_resource: octicons.clock,
   preparing: octicons.clock,
   scheduled: octicons.clock,
-  manual: octicons.circle,
+  manual: octicons.play,
   canceled: octicons.stop,
+  canceling: octicons.stop,
   skipped: octicons.skip,
+}
+
+/** A CI status (pipeline, stage or job) as an icon in its color. */
+export function CIStatusIcon(props: { readonly status: string }) {
+  const { status } = props
+  return (
+    <span
+      className={classNames('gl-ci-icon', `gl-pipeline-${status}`)}
+      role="img"
+      aria-label={status.replace(/_/g, ' ')}
+    >
+      <Octicon symbol={pipelineIcons[status] ?? octicons.circle} />
+    </span>
+  )
 }
 
 /** The pipeline status with an icon in the status color. */

@@ -59,8 +59,9 @@ import { GitLabMemberPicker } from './gitlab-member-picker'
 import { GitLabMarkdown, GitLabMarkdownContext } from './gitlab-markdown'
 import { GitLabMarkdownEditor } from './gitlab-markdown-editor'
 import { GitLabMREvents } from './gitlab-mr-events'
+import { GitLabMRPipelines } from './gitlab-mr-pipelines'
 
-type Tab = 'overview' | 'changes' | 'commits'
+type Tab = 'overview' | 'changes' | 'commits' | 'pipelines'
 
 /** How often to refresh while the merge request is open. */
 const PollInterval = 30 * 1000
@@ -353,6 +354,13 @@ export class GitLabMRDetail extends React.Component<
   }
 
   private onRefreshClicked = () => this.refresh()
+
+  /** The merge box shows the pipeline too, so keep it in step. */
+  private onPipelineChanged = () => {
+    this.loadDetails()
+  }
+
+  private showPipelines = () => this.setState({ tab: 'pipelines', focus: null })
 
   private applyDetails(details: IGitLabMergeRequestDetails) {
     if (this.mounted) {
@@ -675,11 +683,19 @@ export class GitLabMRDetail extends React.Component<
             {this.renderTab('overview', 'Overview', commentCount)}
             {this.renderTab('changes', 'Changes', diffs?.length ?? null)}
             {this.renderTab('commits', 'Commits', commits?.length ?? null)}
+            {this.renderTab('pipelines', 'Pipelines', null)}
           </div>
           <div className="gl-tab-panel" role="tabpanel">
             {tab === 'overview' && this.renderOverview()}
             {tab === 'changes' && this.renderChanges()}
             {tab === 'commits' && this.renderCommits()}
+            {tab === 'pipelines' && (
+              <GitLabMRPipelines
+                context={this.props.context}
+                iid={this.props.mergeRequest.iid}
+                onPipelineChanged={this.onPipelineChanged}
+              />
+            )}
           </div>
         </div>
       </GitLabMarkdownContext.Provider>
@@ -1043,15 +1059,14 @@ export class GitLabMRDetail extends React.Component<
         {details.pipeline !== null && (
           <div className="gl-merge-row">
             <PipelineStatus pipeline={details.pipeline} />
-            {details.pipeline.webURL !== null && (
-              <button
-                type="button"
-                className="gl-link-button"
-                onClick={this.openURL(details.pipeline.webURL)}
-              >
-                View pipeline
-              </button>
-            )}
+            <span className="gl-merge-row-text" />
+            <button
+              type="button"
+              className="gl-link-button"
+              onClick={this.showPipelines}
+            >
+              Show jobs
+            </button>
           </div>
         )}
 

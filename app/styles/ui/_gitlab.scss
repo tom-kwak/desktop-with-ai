@@ -30,6 +30,41 @@
 
 #desktop-app-toolbar .gitlab-merge-requests-button {
   width: 230px;
+
+  .gitlab-toolbar-pipeline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gl-ci-icon {
+    display: inline-flex;
+
+    .octicon {
+      width: 11px;
+      height: 11px;
+      fill: currentColor;
+    }
+  }
+
+  // The toolbar is always dark-ish; use bright status colors.
+  .gl-pipeline-success {
+    color: #2da160;
+  }
+  .gl-pipeline-failed {
+    color: #ec5941;
+  }
+  .gl-pipeline-running,
+  .gl-pipeline-pending,
+  .gl-pipeline-created,
+  .gl-pipeline-preparing,
+  .gl-pipeline-waiting_for_resource {
+    color: #428fdc;
+  }
 }
 
 // ---- GitLab merge requests ------------------------------------------------
@@ -1581,5 +1616,223 @@ body.theme-dark .gitlab-ui {
 @keyframes gl-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+// ---- Pipelines tab --------------------------------------------------------
+
+#gitlab-merge-requests {
+  .gl-ci-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+
+    .octicon {
+      fill: currentColor;
+    }
+  }
+
+  .gl-pipeline-preparing,
+  .gl-pipeline-waiting_for_resource,
+  .gl-pipeline-scheduled {
+    color: var(--gl-blue);
+  }
+
+  .gl-pipeline-canceling {
+    color: var(--gl-text-muted);
+  }
+
+  .gl-pipeline-running .octicon {
+    animation: gl-spin 2s linear infinite;
+  }
+
+  .gl-pipeline-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    margin-bottom: var(--spacing-double);
+    padding: 12px 14px;
+    border: 1px solid var(--gl-border);
+    border-radius: 6px;
+    background: var(--gl-bg-subtle);
+
+    > .gl-ci-icon .octicon {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .gl-pipeline-title {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .gl-pipeline-select {
+    align-self: flex-start;
+    padding: 2px 6px;
+    border: 1px solid var(--gl-border);
+    border-radius: 4px;
+    background: var(--gl-bg);
+    color: var(--gl-text);
+    font: inherit;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .gl-stages {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    padding-bottom: var(--spacing);
+    overflow-x: auto;
+  }
+
+  .gl-stage {
+    flex: 0 0 200px;
+  }
+
+  // The line between stages, like GitLab's pipeline graph.
+  .gl-stage-link {
+    flex: 0 0 24px;
+    align-self: stretch;
+    margin-top: 44px;
+    height: 2px;
+    background: var(--gl-border);
+  }
+
+  .gl-stage-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: var(--spacing);
+    font-weight: var(--font-weight-semibold);
+    text-transform: capitalize;
+  }
+
+  .gl-jobs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gl-job {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--gl-border);
+    border-radius: 16px;
+    background: var(--gl-bg);
+    overflow: hidden;
+
+    &:hover {
+      border-color: var(--gl-text-muted);
+    }
+
+    &.selected {
+      border-color: var(--gl-blue);
+      box-shadow: 0 0 0 2px var(--gl-blue-bg);
+    }
+  }
+
+  .gl-job-main {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 6px 10px;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    .gl-tag {
+      margin-left: 0;
+    }
+  }
+
+  .gl-job-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gl-job-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    border: none;
+    border-left: 1px solid var(--gl-border);
+    background: none;
+    cursor: pointer;
+
+    .octicon {
+      fill: var(--gl-text-muted);
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--gl-bg-strong);
+
+      .octicon {
+        fill: var(--gl-text);
+      }
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+  }
+
+  .gl-pipeline-hint {
+    margin-top: var(--spacing);
+  }
+
+  .gl-job-log {
+    margin-top: var(--spacing);
+    border: 1px solid var(--gl-border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .gl-job-log-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+  }
+
+  .gl-job-log-empty {
+    padding: var(--spacing);
+  }
+
+  // Job logs are terminal output, dark in both themes like on GitLab.
+  .gl-job-log-text {
+    max-height: 360px;
+    margin: 0;
+    padding: 12px 14px;
+    overflow: auto;
+    background: #1f1e24;
+    color: #ececef;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+
+    .gl-meta {
+      color: #a4a3a8;
+    }
   }
 }

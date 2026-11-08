@@ -4,6 +4,8 @@ import { isRecord } from '../is-record'
 export interface IGitLabResponse {
   readonly status: number
   json(): Promise<unknown>
+  /** Only needed for plain-text endpoints such as job logs. */
+  text?(): Promise<string>
 }
 
 /** The subset of `fetch` the merge request client uses, so tests can stub it. */
@@ -71,7 +73,9 @@ export async function request(
   connection: IGitLabConnection,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
-  body?: Record<string, unknown>
+  body?: Record<string, unknown>,
+  /** Return the body as text, for endpoints that don't send JSON. */
+  asText = false
 ): Promise<unknown> {
   const fetchImpl: GitLabRequestFetch =
     connection.fetch ?? ((input, init) => fetch(input, init))
@@ -96,6 +100,10 @@ export async function request(
       0,
       `Couldn't reach ${connection.serverURL}. Check your network connection and try again.`
     )
+  }
+
+  if (asText && response.status >= 200 && response.status < 300) {
+    return response.text !== undefined ? await response.text() : ''
   }
 
   let json: unknown
