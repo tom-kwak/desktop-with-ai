@@ -2,6 +2,7 @@ import { TokenStore } from '../stores/token-store'
 import { GitLabAccountsStore } from './gitlab-accounts-store'
 import { GitLabProjectsStore } from './gitlab-projects'
 import { GitLabSettings } from './gitlab-settings'
+import { IGitLabCredentialSource } from './gitlab-credentials'
 
 let store: GitLabAccountsStore | null = null
 let projectsStore: GitLabProjectsStore | null = null
@@ -44,4 +45,14 @@ export function getGitLabProjectsStore(): GitLabProjectsStore {
     projectsStore = projects
   }
   return projectsStore
+}
+
+/** The GitLab accounts as the Git credential helper sees them. */
+export function getGitLabCredentialSource(): IGitLabCredentialSource {
+  const accounts = getGitLabAccountsStore()
+  return {
+    isEnabled: isGitLabEnabled,
+    getAll: () => accounts.getAll(),
+    getToken: account => accounts.getToken(account),
+  }
 }

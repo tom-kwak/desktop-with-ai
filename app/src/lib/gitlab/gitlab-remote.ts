@@ -110,3 +110,40 @@ export function matchGitLabRemote(
 
   return null
 }
+
+/**
+ * The signed-in GitLab account for the URL Git asks credentials for.
+ *
+ * Git usually sends only protocol and host, so a host match is enough; when
+ * it also sends a path, it has to sit under the server's path prefix.
+ */
+export function findGitLabAccountForCredentialURL(
+  url: URL,
+  accounts: ReadonlyArray<IGitLabAccount>
+): IGitLabAccount | null {
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return null
+  }
+  const path = trimProjectPath(decodeURIComponent(url.pathname))
+
+  for (const account of accounts) {
+    const server = new URL(account.serverURL)
+    if (
+      server.protocol !== url.protocol ||
+      server.host.toLowerCase() !== url.host.toLowerCase()
+    ) {
+      continue
+    }
+    const prefix = trimProjectPath(server.pathname)
+    if (
+      path.length > 0 &&
+      prefix.length > 0 &&
+      path !== prefix &&
+      !path.startsWith(`${prefix}/`)
+    ) {
+      continue
+    }
+    return account
+  }
+  return null
+}
