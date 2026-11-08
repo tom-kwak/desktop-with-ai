@@ -13,6 +13,13 @@ import {
   fetchMergeRequests,
 } from '../../lib/gitlab/gitlab-merge-requests'
 import {
+  IGitLabPipelineInfo,
+  fetchRecentPipelines,
+  isActiveStatus,
+  latestPipelineBySha,
+} from '../../lib/gitlab/gitlab-pipelines'
+import {
+  CIStatusIcon,
   IGitLabMRContext,
   MRStatePill,
   UserAvatar,
@@ -20,6 +27,27 @@ import {
 } from './gitlab-mr-common'
 
 type Scope = 'all' | 'mine' | 'review'
+
+/** A short CI label for the list, e.g. "Passed" or "Running". */
+function pipelineLabel(status: string) {
+  switch (status) {
+    case 'success':
+      return 'Passed'
+    case 'failed':
+      return 'Failed'
+    case 'canceled':
+    case 'canceling':
+      return 'Canceled'
+    case 'manual':
+      return 'Manual'
+    case 'skipped':
+      return 'Skipped'
+    case 'running':
+      return 'Running'
+    default:
+      return 'Pending'
+  }
+}
 
 const states: ReadonlyArray<[GitLabMergeRequestState, string]> = [
   ['opened', 'Open'],
@@ -48,7 +76,12 @@ interface IGitLabMRListState {
   /** Open merge requests of the current branch, whatever the filters say. */
   readonly currentBranchMR: IGitLabMergeRequest | null | undefined
   readonly error: string | null
+  /** Latest pipeline per head commit, for the status next to each MR. */
+  readonly pipelines: ReadonlyMap<string, IGitLabPipelineInfo>
 }
+
+/** Refresh pipeline statuses this often while any shown one is running. */
+const ActivePipelineRefresh = 10 * 1000
 
 /** The merge requests of the project, filtered like GitLab's MR page. */
 export class GitLabMRList extends React.Component<
@@ -57,6 +90,7 @@ export class GitLabMRList extends React.Component<
 > {
   private mounted = false
   private requestId = 0
+  private pipelineTimer: number | undefined = undefined
 
   public constructor(props: IGitLabMRListProps) {
     super(props)
@@ -67,6 +101,7 @@ export class GitLabMRList extends React.Component<
       items: null,
       currentBranchMR: undefined,
       error: null,
+      pipelines: new Map(),
     }
   }
 
@@ -78,6 +113,37 @@ export class GitLabMRList extends React.Component<
 
   public componentWillUnmount() {
     this.mounted = false
+    window.clearTimeout(this.pipelineTimer)
+  }
+
+  /**
+   * Load pipeline statuses for the list. Without them the list still works,
+   * so failures (e.g. no CI permission) only hide the icons.
+   */
+  private loadPipelines = async () => {
+    window.clearTimeout(this.pipelineTimer)
+    const { connection, project } = this.props.context
+    try {
+      const pipelines = latestPipelineBySha(
+        await fetchRecentPipelines(connection, project.id)
+      )
+      if (!this.mounted) {
+        return
+      }
+      this.setState({ pipelines })
+      const running = (this.state.items ?? []).some(mr => {
+        const p = mr.headSha !== null ? pipelines.get(mr.headSha) : undefined
+        return p !== undefined && isActiveStatus(p.status)
+      })
+      if (running) {
+        this.pipelineTimer = window.setTimeout(
+          this.loadPipelines,
+          ActivePipelineRefresh
+        )
+      }
+    } catch (e) {
+      log.debug('[GitLab] could not load pipelines for the list', e)
+    }
   }
 
   private filter(): IGitLabMergeRequestFilter {
@@ -104,7 +170,7 @@ export class GitLabMRList extends React.Component<
         this.filter()
       )
       if (this.mounted && id === this.requestId) {
-        this.setState({ items })
+        this.setState({ items }, this.loadPipelines)
       }
     } catch (e) {
       if (this.mounted && id === this.requestId) {
@@ -241,6 +307,22 @@ export class GitLabMRList extends React.Component<
     )
   }
 
+  private renderPipeline(mr: IGitLabMergeRequest) {
+    const pipeline =
+      mr.headSha !== null ? this.state.pipelines.get(mr.headSha) : undefined
+    if (pipeline === undefined) {
+      return null
+    }
+    return (
+      <span className="gl-mr-pipeline">
+        <CIStatusIcon status={pipeline.status} />
+        <span className="gl-mr-pipeline-label">
+          {pipelineLabel(pipeline.status)}
+        </span>
+      </span>
+    )
+  }
+
   private renderItems() {
     const { items, error, search } = this.state
 
@@ -312,6 +394,7 @@ export class GitLabMRList extends React.Component<
                 </span>
               </span>
               <span className="gl-mr-item-side">
+                {this.renderPipeline(mr)}
                 {mr.author !== null && (
                   <UserAvatar user={mr.author} size="small" />
                 )}

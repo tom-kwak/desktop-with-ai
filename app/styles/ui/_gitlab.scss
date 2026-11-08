@@ -780,6 +780,33 @@ body.theme-dark .gitlab-ui {
     flex-shrink: 0;
   }
 
+  .gl-mr-pipeline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px 1px 6px;
+    border: 1px solid var(--gl-border);
+    border-radius: 12px;
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+
+    &:has(.gl-pipeline-success) {
+      border-color: var(--gl-green);
+      color: var(--gl-green);
+    }
+
+    &:has(.gl-pipeline-failed) {
+      border-color: var(--gl-red);
+      color: var(--gl-red);
+    }
+
+    &:has(.gl-pipeline-running),
+    &:has(.gl-pipeline-pending) {
+      border-color: var(--gl-blue);
+      color: var(--gl-blue);
+    }
+  }
+
   .gl-count {
     display: inline-flex;
     align-items: center;

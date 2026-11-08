@@ -9,6 +9,7 @@ import {
   formatDuration,
   groupJobsByStage,
   isActiveStatus,
+  latestPipelineBySha,
   runJobAction,
 } from '../../../src/lib/gitlab/gitlab-pipelines'
 
@@ -143,5 +144,29 @@ describe('pipeline helpers', () => {
     assert.equal(isActiveStatus('running'), true)
     assert.equal(isActiveStatus('manual'), false)
     assert.equal(isActiveStatus('success'), false)
+  })
+})
+
+describe('latestPipelineBySha', () => {
+  it('keeps the newest pipeline of each commit', () => {
+    const p = (id: number, sha: string, status: string) => ({
+      id,
+      status,
+      ref: 'x',
+      sha,
+      webURL: null,
+      duration: null,
+      createdAt: '',
+      source: null,
+    })
+    const map = latestPipelineBySha([
+      p(5, 'aaa', 'running'),
+      p(3, 'aaa', 'failed'),
+      p(4, 'bbb', 'success'),
+      p(6, '', 'success'),
+    ])
+    assert.equal(map.get('aaa')?.id, 5)
+    assert.equal(map.get('bbb')?.status, 'success')
+    assert.equal(map.size, 2)
   })
 })

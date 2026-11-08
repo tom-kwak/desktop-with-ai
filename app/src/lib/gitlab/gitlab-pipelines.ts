@@ -287,3 +287,34 @@ export function formatDuration(seconds: number | null): string | null {
   const h = Math.floor(m / 60)
   return h > 0 ? `${h}h ${m % 60}m` : `${m}m ${s.toString().padStart(2, '0')}s`
 }
+
+/** The project's most recent pipelines, newest first. */
+export async function fetchRecentPipelines(
+  connection: IGitLabConnection,
+  projectId: number
+): Promise<ReadonlyArray<IGitLabPipelineInfo>> {
+  const body = await request(
+    connection,
+    'GET',
+    `/projects/${projectId}/pipelines?per_page=100&order_by=id&sort=desc`
+  )
+  return parseList(body, parsePipeline)
+}
+
+/**
+ * The newest pipeline for each commit. Merge requests in a list don't carry
+ * their pipeline, but they do carry their head commit, so one request for
+ * recent pipelines covers the whole list.
+ */
+export function latestPipelineBySha(
+  pipelines: ReadonlyArray<IGitLabPipelineInfo>
+): ReadonlyMap<string, IGitLabPipelineInfo> {
+  const bySha = new Map<string, IGitLabPipelineInfo>()
+  for (const p of pipelines) {
+    const known = bySha.get(p.sha)
+    if (p.sha !== '' && (known === undefined || p.id > known.id)) {
+      bySha.set(p.sha, p)
+    }
+  }
+  return bySha
+}
