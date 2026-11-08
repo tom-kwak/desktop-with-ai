@@ -427,11 +427,22 @@ export interface IGitLabNotePosition {
 /** A comment thread: a general comment, or a comment on lines of the diff. */
 export interface IGitLabDiscussion {
   readonly id: string
-  /** The comment and its replies, oldest first, without system notes. */
+  /**
+   * The comment and its replies, oldest first. For a system event (see
+   * `system`) the event's notes; otherwise without system notes.
+   */
   readonly notes: ReadonlyArray<IGitLabNote>
   /** Set for comments on lines of the diff. */
   readonly position: IGitLabNotePosition | null
   readonly resolved: boolean
+  /** Who resolved the thread, when GitLab says. */
+  readonly resolvedBy: IGitLabUserRef | null
+  readonly resolvedAt: string | null
+  /**
+   * An event GitLab recorded rather than a comment, e.g. "approved this
+   * merge request" or "added 2 commits".
+   */
+  readonly system: boolean
 }
 
 export function num(value: unknown): number | null {
@@ -476,27 +487,41 @@ export function parseDiscussion(value: unknown): IGitLabDiscussion | null {
     return null
   }
   const all = value.notes.filter(isRecord)
-  const notes = new Array<IGitLabNote>()
-  for (const item of all) {
-    const note = parseNote(item)
-    if (note !== null && !note.system) {
-      notes.push(note)
-    }
-  }
+  const parsed = all.map(parseNote).filter((n): n is IGitLabNote => n !== null)
+  const comments = parsed.filter(n => !n.system)
+  const system = comments.length === 0
+  const notes = system ? parsed : comments
   if (notes.length === 0) {
     return null
   }
 
   const first = all[0]
   const position =
-    first.type === 'DiffNote' ? parseNotePosition(first.position) : null
+    !system && first.type === 'DiffNote'
+      ? parseNotePosition(first.position)
+      : null
   const resolvable = all.filter(n => n.resolvable === true)
+  const resolved =
+    resolvable.length > 0 && resolvable.every(n => n.resolved === true)
+  const lastResolved = resolved
+    ? resolvable
+        .filter(n => typeof n.resolved_at === 'string')
+        .sort((a, b) =>
+          String(a.resolved_at).localeCompare(String(b.resolved_at))
+        )
+        .at(-1)
+    : undefined
 
   return {
     id: value.id,
     notes,
     position,
-    resolved: resolvable.length > 0 && resolvable.every(n => n.resolved),
+    resolved,
+    resolvedBy:
+      lastResolved !== undefined ? parseUser(lastResolved.resolved_by) : null,
+    resolvedAt:
+      lastResolved !== undefined ? str(lastResolved.resolved_at) : null,
+    system,
   }
 }
 

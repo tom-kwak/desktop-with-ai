@@ -101,8 +101,21 @@ export class GitLabMRThread extends React.Component<
             onClick={this.toggleExpanded}
           >
             <Octicon symbol={octicons.checkCircle} />
-            Resolved thread · {discussion.notes.length} comment
-            {discussion.notes.length === 1 ? '' : 's'} · Show
+            <span>
+              {discussion.resolvedBy !== null
+                ? `Resolved by ${discussion.resolvedBy.name}`
+                : 'Resolved thread'}
+              {discussion.resolvedAt !== null && (
+                <>
+                  {' '}
+                  <RelativeTime date={new Date(discussion.resolvedAt)} />
+                </>
+              )}
+              {` · ${discussion.notes.length} comment${
+                discussion.notes.length === 1 ? '' : 's'
+              }`}
+            </span>
+            <span className="gl-link-button">Show</span>
           </button>
         ) : (
           <>
@@ -140,7 +153,11 @@ export class GitLabMRThread extends React.Component<
           )}
           {outdated && <span className="gl-tag">outdated</span>}
           {discussion.resolved && (
-            <span className="gl-tag gl-tag-success">resolved</span>
+            <span className="gl-tag gl-tag-success">
+              {discussion.resolvedBy !== null
+                ? `resolved by ${discussion.resolvedBy.name}`
+                : 'resolved'}
+            </span>
           )}
         </div>
         {excerpt !== null && <DiffExcerpt lines={excerpt} />}

@@ -488,6 +488,128 @@ body.theme-dark .gitlab-ui {
     gap: var(--spacing-half);
   }
 
+  .gl-activity-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing);
+
+    h3 {
+      margin: 0;
+      font-size: var(--font-size-md);
+    }
+  }
+
+  .gl-events {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0 0 0 14px;
+  }
+
+  // A vertical line joins the icons, like GitLab's activity timeline.
+  .gl-event {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 11px;
+      width: 2px;
+      background: var(--gl-border);
+    }
+
+    &:first-child::before {
+      top: 50%;
+    }
+
+    &:last-child::before {
+      bottom: 50%;
+    }
+
+    &:only-child::before {
+      display: none;
+    }
+  }
+
+  .gl-event-icon {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--gl-border);
+    border-radius: 50%;
+    background: var(--gl-bg);
+
+    .octicon {
+      width: 12px;
+      height: 12px;
+      fill: var(--gl-text-muted);
+    }
+  }
+
+  .gl-event-approved .gl-event-icon,
+  .gl-event-resolved .gl-event-icon {
+    border-color: var(--gl-green);
+    background: var(--gl-green-bg);
+
+    .octicon {
+      fill: var(--gl-green);
+    }
+  }
+
+  .gl-event-merged .gl-event-icon {
+    border-color: var(--gl-blue);
+    background: var(--gl-blue-bg);
+
+    .octicon {
+      fill: var(--gl-blue);
+    }
+  }
+
+  .gl-event-unapproved .gl-event-icon,
+  .gl-event-closed .gl-event-icon {
+    border-color: var(--gl-red);
+    background: var(--gl-red-bg);
+
+    .octicon {
+      fill: var(--gl-red);
+    }
+  }
+
+  .gl-event-text {
+    flex: 1;
+    min-width: 0;
+    padding-top: 3px;
+    color: var(--gl-text-muted);
+    overflow-wrap: anywhere;
+
+    strong {
+      color: var(--gl-text);
+    }
+
+    .gl-avatar {
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+  }
+
+  .gl-event-details {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+  }
+
   .gl-section-title {
     margin: var(--spacing-double) 0 var(--spacing);
     padding-bottom: var(--spacing-half);
@@ -936,6 +1058,10 @@ body.theme-dark .gitlab-ui {
     display: flex;
     align-items: center;
     gap: var(--spacing-half);
+
+    > span:first-of-type {
+      flex: 1;
+    }
     width: 100%;
     padding: var(--spacing-half) var(--spacing);
     border: none;

@@ -12,6 +12,7 @@ import {
   IGitLabDiffFile,
   IGitLabDiscussion,
   IGitLabMergeRequest,
+  IGitLabNote,
   IGitLabNotePosition,
   addMergeRequestComment,
   fetchMergeRequestDiffs,
@@ -57,8 +58,18 @@ import { GitLabMRChanges } from './gitlab-mr-changes'
 import { GitLabMemberPicker } from './gitlab-member-picker'
 import { GitLabMarkdown, GitLabMarkdownContext } from './gitlab-markdown'
 import { GitLabMarkdownEditor } from './gitlab-markdown-editor'
+import { GitLabMREvents } from './gitlab-mr-events'
 
 type Tab = 'overview' | 'changes' | 'commits'
+
+/** GitLab's activity filter: everything, comments only, or history only. */
+type ActivityFilter = 'all' | 'comments' | 'history'
+
+const activityFilters: ReadonlyArray<[ActivityFilter, string]> = [
+  ['all', 'All activity'],
+  ['comments', 'Comments'],
+  ['history', 'History'],
+]
 
 interface IEditing {
   readonly title: string
@@ -83,6 +94,7 @@ interface IGitLabMRDetailState {
   readonly loadError: string | null
 
   readonly tab: Tab
+  readonly activityFilter: ActivityFilter
   readonly focus: IGitLabNotePosition | null
   readonly busy: boolean
   readonly actionError: string | null
@@ -117,6 +129,7 @@ export class GitLabMRDetail extends React.Component<
       members: null,
       loadError: null,
       tab: 'overview',
+      activityFilter: 'all',
       focus: null,
       busy: false,
       actionError: null,
@@ -335,6 +348,9 @@ export class GitLabMRDetail extends React.Component<
             notes: [note],
             position: null,
             resolved: false,
+            resolvedBy: null,
+            resolvedAt: null,
+            system: false,
           },
         ],
       }))
@@ -569,10 +585,9 @@ export class GitLabMRDetail extends React.Component<
       )
     }
 
-    const commentCount = (discussions ?? []).reduce(
-      (n, d) => n + d.notes.length,
-      0
-    )
+    const commentCount = (discussions ?? [])
+      .filter(d => !d.system)
+      .reduce((n, d) => n + d.notes.length, 0)
 
     return (
       <GitLabMarkdownContext.Provider value={this.markdownLinks}>
@@ -770,15 +785,30 @@ export class GitLabMRDetail extends React.Component<
 
           {this.renderMergeBox()}
 
-          <h3 className="gl-section-title">Activity</h3>
+          <div className="gl-section-title gl-activity-header">
+            <h3>Activity</h3>
+            <div className="gl-chips" role="group" aria-label="Show">
+              {activityFilters.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={this.state.activityFilter === value}
+                  className={classNames('gl-chip', {
+                    selected: this.state.activityFilter === value,
+                  })}
+                  onClick={this.setActivityFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           {discussions === null ? (
             <div className="gl-empty">
-              <Loading /> Loading comments…
+              <Loading /> Loading activity…
             </div>
-          ) : discussions.length === 0 ? (
-            <p className="gl-meta">No comments yet.</p>
           ) : (
-            discussions.map(d => this.renderThread(d))
+            this.renderActivity(discussions)
           )}
           {general.map(d => (
             <div key={d.id} className="gl-draft">
@@ -811,6 +841,46 @@ export class GitLabMRDetail extends React.Component<
 
   private deleteDraft = (draft: IGitLabDraftNote) => () =>
     this.onDeleteDraft(draft)
+
+  private setActivityFilter = (activityFilter: ActivityFilter) => () =>
+    this.setState({ activityFilter })
+
+  /**
+   * Comments and GitLab's recorded events in time order. Events next to
+   * each other share one compact timeline block.
+   */
+  private renderActivity(discussions: ReadonlyArray<IGitLabDiscussion>) {
+    const filter = this.state.activityFilter
+    const shown = discussions.filter(d =>
+      filter === 'all' ? true : filter === 'history' ? d.system : !d.system
+    )
+    if (shown.length === 0) {
+      return (
+        <p className="gl-meta">
+          {filter === 'history' ? 'No history yet.' : 'No comments yet.'}
+        </p>
+      )
+    }
+
+    const blocks = new Array<JSX.Element>()
+    let events = new Array<IGitLabNote>()
+    const flush = () => {
+      if (events.length > 0) {
+        blocks.push(<GitLabMREvents key={`e${events[0].id}`} notes={events} />)
+        events = []
+      }
+    }
+    for (const d of shown) {
+      if (d.system) {
+        events.push(...d.notes)
+      } else {
+        flush()
+        blocks.push(this.renderThread(d))
+      }
+    }
+    flush()
+    return blocks
+  }
 
   private renderThread(d: IGitLabDiscussion) {
     const { diffs, details, busy } = this.state

@@ -9,6 +9,7 @@ import {
   getDiffExcerpt,
 } from '../../../src/lib/gitlab/gitlab-merge-requests'
 import { linkGitLabReferences } from '../../../src/lib/gitlab/gitlab-markdown'
+import { describeSystemNote } from '../../../src/lib/gitlab/gitlab-system-notes'
 
 const connection = (fetch: GitLabRequestFetch) => ({
   serverURL: 'http://localhost:8929',
@@ -40,7 +41,7 @@ const diffNote = {
 }
 
 describe('fetchMergeRequestDiscussions', () => {
-  it('keeps line comments with their position and drops system notes', async () => {
+  it('keeps line comments with their position and marks system events', async () => {
     const discussions = await fetchMergeRequestDiscussions(
       connection(async () => ({
         status: 200,
@@ -64,7 +65,17 @@ describe('fetchMergeRequestDiscussions', () => {
     )
 
     assert.deepEqual(
-      discussions.map(d => [d.id, d.notes.map(n => n.body), d.position]),
+      discussions.map(d => [d.id, d.system]),
+      [
+        ['a', true],
+        ['b', false],
+        ['c', false],
+      ]
+    )
+    assert.deepEqual(
+      discussions
+        .filter(d => !d.system)
+        .map(d => [d.id, d.notes.map(n => n.body), d.position]),
       [
         ['b', ['LGTM'], null],
         [
@@ -214,5 +225,46 @@ describe('linkGitLabReferences', () => {
       '```',
     ].join('\n')
     assert.equal(link(md), md)
+  })
+})
+
+describe('describeSystemNote', () => {
+  it('classifies events and drops markdown', () => {
+    assert.deepEqual(describeSystemNote('approved this merge request'), {
+      kind: 'approved',
+      text: 'approved this merge request',
+      details: [],
+    })
+    assert.equal(
+      describeSystemNote('unapproved this merge request').kind,
+      'unapproved'
+    )
+    assert.equal(describeSystemNote('resolved all threads').kind, 'resolved')
+    assert.equal(describeSystemNote('left review comments').kind, 'review')
+    assert.equal(
+      describeSystemNote('requested review from @root').kind,
+      'review'
+    )
+    assert.equal(describeSystemNote('changed the description').kind, 'edited')
+    assert.equal(
+      describeSystemNote('marked this merge request as **ready**').kind,
+      'draft'
+    )
+    assert.equal(
+      describeSystemNote('mentioned in [!4](http://x/-/merge_requests/4)').text,
+      'mentioned in !4'
+    )
+    assert.equal(describeSystemNote('something new').kind, 'other')
+  })
+
+  it('lists added commits', () => {
+    const e = describeSystemNote(
+      'added 2 commits\n\n<ul><li>d50f1703 - Add hello file</li><li>a1b2c3d4 - Fix &amp; test</li></ul>\n\n[Compare with previous version](http://x)'
+    )
+    assert.equal(e.kind, 'commits')
+    assert.deepEqual(e.details, [
+      'd50f1703 - Add hello file',
+      'a1b2c3d4 - Fix & test',
+    ])
   })
 })
