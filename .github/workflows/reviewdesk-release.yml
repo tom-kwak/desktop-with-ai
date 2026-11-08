@@ -1,20 +1,149 @@
 name: ReviewDesk release
 
 # Builds the macOS app and attaches it to a GitHub release, which is where the
-# download page links to. Push a tag such as release-v1.0.2 to run it. The tag
-# has to be on a commit that is on main: only what has been merged into main is
-# released.
+# download page links to.
+#
+# Release from the Actions tab: open "ReviewDesk release", choose "Run
+# workflow" and enter a version such as 1.2.0. The workflow then
+#   1. checks the version, that the tag is new, and that ReviewDesk CI passed
+#      on the tip of develop,
+#   2. fast-forwards main to develop, so main and develop stay the same
+#      commit and no merge back is needed,
+#   3. tags that commit release-v<version>, builds the app and publishes it.
+# Nothing is changed until every check in step 1 has passed. "Dry run" runs
+# only the checks.
+#
+# Pushing a tag such as release-v1.0.2 by hand still works. That tag has to be
+# on a commit that is on main.
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.2.0'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run: only run the checks, change nothing'
+        type: boolean
+        default: false
+      skip_ci_check:
+        description: "Release even if ReviewDesk CI hasn't passed on develop"
+        type: boolean
+        default: false
   push:
     tags:
       - 'release-v[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
+  actions: read
+
+# One release at a time, so two runs can't move main at once.
+concurrency:
+  group: reviewdesk-release
+  cancel-in-progress: false
 
 jobs:
+  prepare:
+    name: Check, move main and tag
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      sha: ${{ steps.develop.outputs.sha }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Check the version
+        id: tag
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$VERSION' isn't a version like 1.2.0."
+            exit 1
+          fi
+          tag="release-v$VERSION"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --silent 2>/dev/null; then
+            echo "::error::$tag already exists. Pick the next version."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Tag: $tag"
+
+      - name: Find the tip of develop
+        id: develop
+        run: |
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/branches/develop" --jq .commit.sha)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "develop is at $sha"
+
+      - name: Check that ReviewDesk CI passed on develop
+        if: ${{ !inputs.skip_ci_check }}
+        env:
+          SHA: ${{ steps.develop.outputs.sha }}
+        run: |
+          conclusions=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/reviewdesk-ci.yml/runs?head_sha=$SHA&per_page=20" \
+            --jq '[.workflow_runs[] | .status + "/" + (.conclusion // "")] | join(" ")')
+          echo "ReviewDesk CI runs for $SHA: ${conclusions:-none}"
+          case " $conclusions " in
+            *" completed/success "*) ;;
+            *" in_progress/"* | *" queued/"* | *" waiting/"* | *" pending/"*)
+              echo "::error::ReviewDesk CI is still running on develop. Run the release again when it has passed."
+              exit 1 ;;
+            *)
+              echo "::error::ReviewDesk CI hasn't passed on develop ($SHA). Fix it, or rerun it from the Actions tab."
+              exit 1 ;;
+          esac
+
+      - name: Check that main can fast-forward to develop
+        env:
+          SHA: ${{ steps.develop.outputs.sha }}
+        run: |
+          # "ahead": develop has new commits on top of main; "identical":
+          # nothing new, which is fine for re-releasing the same code.
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$SHA" --jq .status)
+          echo "develop compared to main: $status"
+          case "$status" in
+            ahead | identical) ;;
+            *)
+              echo "::error::main has commits that develop doesn't. Merge main into develop first, then release again."
+              exit 1 ;;
+          esac
+
+      - name: Move main to develop
+        if: ${{ !inputs.dry_run }}
+        env:
+          SHA: ${{ steps.develop.outputs.sha }}
+        run: |
+          # force=false: GitHub refuses anything but a fast-forward.
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/main" \
+            -f sha="$SHA" -F force=false --silent
+          echo "main is now at $SHA"
+
+      - name: Tag the release
+        if: ${{ !inputs.dry_run }}
+        env:
+          SHA: ${{ steps.develop.outputs.sha }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          # A tag created with the workflow's token doesn't start the
+          # tag-push trigger above, so the app is built once, by this run.
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" -f sha="$SHA" --silent
+          echo "Tagged $SHA as $TAG"
+
   release:
     name: Build and publish
+    needs: prepare
+    # Runs after `prepare` for a release from the Actions tab, and on its own
+    # (with `prepare` skipped) when a tag is pushed by hand.
+    if: >-
+      !cancelled() && (
+        (github.event_name == 'push' && needs.prepare.result == 'skipped') ||
+        (github.event_name == 'workflow_dispatch' && needs.prepare.result ==
+      'success' && !inputs.dry_run) )
     # Apple Silicon, which is what the app is built for.
     runs-on: macos-15
     timeout-minutes: 45
@@ -22,21 +151,24 @@ jobs:
       # Not 'production': that channel would need Apple signing, and would make
       # the app update itself to the official GitHub Desktop.
       RELEASE_CHANNEL: development
+      TAG: ${{ needs.prepare.outputs.tag || github.ref_name }}
+      SHA: ${{ needs.prepare.outputs.sha || github.sha }}
     steps:
-      - name: Check that the tagged commit is on main
+      - name: Check that the commit is on main
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           # "identical" or "behind" means the commit is main or one of its
           # ancestors; "ahead" and "diverged" mean it isn't on main.
-          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq .status)
-          echo "$GITHUB_REF_NAME compared to main: $status"
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$SHA" --jq .status)
+          echo "$TAG compared to main: $status"
           if [ "$status" != "identical" ] && [ "$status" != "behind" ]; then
-            echo "::error::$GITHUB_REF_NAME isn't on main. Merge the commit into main and tag it there."
+            echo "::error::$TAG isn't on main. Merge the commit into main and tag it there."
             exit 1
           fi
       - uses: actions/checkout@v7
         with:
+          ref: ${{ env.SHA }}
           submodules: recursive
       - uses: actions/setup-node@v6
         with:
@@ -49,7 +181,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/ReviewDesk-arm64.zip \
-            --title "ReviewDesk ${GITHUB_REF_NAME#release-v}" \
+          gh release create "$TAG" dist/ReviewDesk-arm64.zip \
+            --verify-tag \
+            --title "ReviewDesk ${TAG#release-v}" \
             --generate-notes \
             --notes "macOS, Apple Silicon. See the download page for how to install it."

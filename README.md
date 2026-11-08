@@ -138,11 +138,21 @@ GitHub Desktop 자체의 방향은 [이 문서](docs/process/what-is-desktop.md)
 | `develop` | 기능을 합치고 검증하는 기준 브랜치입니다. |
 | `feature/{기능명}` | `develop`에서 만들어 PR로 `develop`에 합칩니다. |
 
-`develop`을 `main`에 합친 뒤 `main`의 커밋에 `release-vX.Y.Z` 태그를 푸시하면
-[GitHub Actions](.github/workflows/reviewdesk-release.yml)가 앱을 빌드해 Release에 올립니다.
-`main`에 없는 커밋의 태그는 실패합니다. PR은 [ReviewDesk CI](.github/workflows/reviewdesk-ci.yml)
-(타입 체크, 서식, 린트, 테스트)가 확인하고, 소개 페이지([`website/`](website/))는 `main`에 푸시하면
-배포됩니다.
+릴리스는 GitHub의 Actions 탭에서 [ReviewDesk release](.github/workflows/reviewdesk-release.yml)를
+열고 **Run workflow**에 버전(예: `1.2.0`)을 넣어 실행합니다. 워크플로가 순서대로 처리합니다.
+
+1. 버전 형식, 같은 태그가 없는지, `develop` 최신 커밋에서 ReviewDesk CI가 통과했는지 확인합니다.
+2. `main`을 `develop`으로 fast-forward 합니다. 머지 커밋을 만들지 않으므로 릴리스 시점에 두 브랜치가
+   같은 커밋이고, `main`을 `develop`으로 다시 합칠 필요가 없습니다.
+3. 그 커밋에 `release-vX.Y.Z` 태그를 달고 앱을 빌드해 Release에 올립니다.
+
+확인에 하나라도 실패하면 아무것도 바꾸지 않고 멈춥니다. `Dry run`을 켜면 확인만 합니다. `main`에
+`develop`에 없는 커밋이 있으면 fast-forward가 안 되므로, 먼저 `main`을 `develop`에 합친 뒤 다시
+실행합니다. `main`의 커밋에 `release-vX.Y.Z` 태그를 직접 푸시해도 빌드됩니다(`main`에 없는 커밋이면
+실패합니다).
+
+PR은 [ReviewDesk CI](.github/workflows/reviewdesk-ci.yml)(타입 체크, 서식, 린트, 테스트)가 확인하고,
+소개 페이지([`website/`](website/))는 `main`에 푸시하면 배포됩니다.
 
 ## ReviewDesk 빌드하기
 
