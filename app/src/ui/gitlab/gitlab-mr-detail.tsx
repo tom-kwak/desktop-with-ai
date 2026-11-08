@@ -56,6 +56,7 @@ import {
 import { GitLabMRThread } from './gitlab-mr-thread'
 import { GitLabMRChanges } from './gitlab-mr-changes'
 import { GitLabMemberPicker } from './gitlab-member-picker'
+import { GitLabMarkdown, GitLabMarkdownContext } from './gitlab-markdown'
 
 type Tab = 'overview' | 'changes' | 'commits'
 
@@ -99,6 +100,10 @@ export class GitLabMRDetail extends React.Component<
   IGitLabMRDetailState
 > {
   private mounted = false
+  private markdownLinks = {
+    projectURL: this.props.context.project.webURL,
+    serverURL: this.props.context.connection.serverURL,
+  }
 
   public constructor(props: IGitLabMRDetailProps) {
     super(props)
@@ -570,36 +575,38 @@ export class GitLabMRDetail extends React.Component<
     )
 
     return (
-      <div className="gl-mr-detail">
-        {this.renderHeader()}
-        {actionError !== null && (
-          <ErrorBanner message={actionError} onDismiss={this.dismissError} />
-        )}
-        {notice !== null && (
-          <div className="gl-notice" role="status">
-            <Octicon symbol={octicons.checkCircle} />
-            <span>{notice}</span>
-            <Button
-              size="small"
-              onClick={this.dismissNotice}
-              ariaLabel="Dismiss"
-            >
-              <Octicon symbol={octicons.x} />
-            </Button>
+      <GitLabMarkdownContext.Provider value={this.markdownLinks}>
+        <div className="gl-mr-detail">
+          {this.renderHeader()}
+          {actionError !== null && (
+            <ErrorBanner message={actionError} onDismiss={this.dismissError} />
+          )}
+          {notice !== null && (
+            <div className="gl-notice" role="status">
+              <Octicon symbol={octicons.checkCircle} />
+              <span>{notice}</span>
+              <Button
+                size="small"
+                onClick={this.dismissNotice}
+                ariaLabel="Dismiss"
+              >
+                <Octicon symbol={octicons.x} />
+              </Button>
+            </div>
+          )}
+          {this.renderPendingReview()}
+          <div className="gl-tabs" role="tablist">
+            {this.renderTab('overview', 'Overview', commentCount)}
+            {this.renderTab('changes', 'Changes', diffs?.length ?? null)}
+            {this.renderTab('commits', 'Commits', commits?.length ?? null)}
           </div>
-        )}
-        {this.renderPendingReview()}
-        <div className="gl-tabs" role="tablist">
-          {this.renderTab('overview', 'Overview', commentCount)}
-          {this.renderTab('changes', 'Changes', diffs?.length ?? null)}
-          {this.renderTab('commits', 'Commits', commits?.length ?? null)}
+          <div className="gl-tab-panel" role="tabpanel">
+            {tab === 'overview' && this.renderOverview()}
+            {tab === 'changes' && this.renderChanges()}
+            {tab === 'commits' && this.renderCommits()}
+          </div>
         </div>
-        <div className="gl-tab-panel" role="tabpanel">
-          {tab === 'overview' && this.renderOverview()}
-          {tab === 'changes' && this.renderChanges()}
-          {tab === 'commits' && this.renderCommits()}
-        </div>
-      </div>
+      </GitLabMarkdownContext.Provider>
     )
   }
 
@@ -746,9 +753,14 @@ export class GitLabMRDetail extends React.Component<
                 empty: mr.description.trim().length === 0,
               })}
             >
-              {mr.description.trim().length > 0
-                ? mr.description
-                : 'No description.'}
+              {mr.description.trim().length > 0 ? (
+                <GitLabMarkdown
+                  markdown={mr.description}
+                  title={`Description of !${mr.iid}`}
+                />
+              ) : (
+                'No description.'
+              )}
             </div>
           )}
 

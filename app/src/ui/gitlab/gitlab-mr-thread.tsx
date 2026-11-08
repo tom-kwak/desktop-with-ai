@@ -11,6 +11,7 @@ import {
   IGitLabNotePosition,
 } from '../../lib/gitlab/gitlab-merge-requests'
 import { CommentBox, UserAvatar } from './gitlab-mr-common'
+import { GitLabMarkdown } from './gitlab-markdown'
 
 interface IGitLabMRThreadProps {
   readonly discussion: IGitLabDiscussion
@@ -162,7 +163,12 @@ export class GitLabMRThread extends React.Component<
               </>
             )}
           </div>
-          <div className="gl-note-body">{note.body}</div>
+          <div className="gl-note-body">
+            <GitLabMarkdown
+              markdown={note.body}
+              title={`Comment by ${note.author?.name ?? 'someone'}`}
+            />
+          </div>
         </div>
       </div>
     )

@@ -702,7 +702,6 @@ body.theme-dark .gitlab-ui {
     padding: var(--spacing);
     border: 1px solid var(--gl-border);
     border-radius: var(--gl-radius);
-    white-space: pre-wrap;
     overflow-wrap: anywhere;
 
     &.empty {
@@ -943,6 +942,16 @@ body.theme-dark .gitlab-ui {
     margin-top: 2px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+
+  // Rendered markdown keeps its own spacing.
+  .gl-note-content .gl-note-body,
+  .gl-description {
+    white-space: normal;
+  }
+
+  .gl-markdown .sandboxed-markdown-iframe-container {
+    width: 100%;
   }
 
   .gl-thread-replies {

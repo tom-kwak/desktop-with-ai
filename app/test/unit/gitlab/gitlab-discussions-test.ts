@@ -8,6 +8,7 @@ import {
   fetchMergeRequestDiscussions,
   getDiffExcerpt,
 } from '../../../src/lib/gitlab/gitlab-merge-requests'
+import { linkGitLabReferences } from '../../../src/lib/gitlab/gitlab-markdown'
 
 const connection = (fetch: GitLabRequestFetch) => ({
   serverURL: 'http://localhost:8929',
@@ -179,5 +180,39 @@ describe('getDiffExcerpt', () => {
       ),
       null
     )
+  })
+})
+
+describe('linkGitLabReferences', () => {
+  const link = (md: string) =>
+    linkGitLabReferences(
+      md,
+      'http://localhost:8929/team/api',
+      'http://localhost:8929'
+    )
+
+  it('links merge requests, issues and people', () => {
+    assert.equal(
+      link('Fixes #3, see !12 (thanks @jane.doe)'),
+      'Fixes [#3](http://localhost:8929/team/api/-/issues/3), see [!12](http://localhost:8929/team/api/-/merge_requests/12) (thanks [@jane.doe](http://localhost:8929/jane.doe))'
+    )
+  })
+
+  it('points uploads at the project', () => {
+    assert.equal(
+      link('![shot](/uploads/abc/shot.png)'),
+      '![shot](http://localhost:8929/team/api/uploads/abc/shot.png)'
+    )
+  })
+
+  it('leaves code, emails and headings alone', () => {
+    const md = [
+      '# Title',
+      'mail me@example.com or run `git log #3`',
+      '```',
+      'see !12 and @jane',
+      '```',
+    ].join('\n')
+    assert.equal(link(md), md)
   })
 })
