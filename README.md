@@ -2,7 +2,8 @@
 
 [ReviewDesk](https://tom-kwak.github.io/desktop-with-ai/)는 커밋과 브랜치를 AI로 리뷰하는
 오픈 소스 데스크톱 Git 클라이언트입니다. [GitHub Desktop](https://github.com/desktop/desktop)을
-포크해서 AI 리뷰와 커밋 그래프를 더했고, 기존 기능은 그대로 동작합니다.
+포크해서 AI 리뷰, 커밋 그래프, GitLab 연동(머지 리퀘스트 리뷰와 머지)을 더했고, 기존 기능은
+그대로 동작합니다.
 [Electron](https://www.electronjs.org/) 기반이며 [TypeScript](https://www.typescriptlang.org)와
 [React](https://reactjs.org/)로 작성되었습니다.
 
@@ -44,6 +45,8 @@ curl -L https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/Rev
 
  - 실행 중에는 앱을 옮기지 마세요. 옮기면 내장 Git을 찾지 못합니다. 옮겼다면 앱을 종료하고 다시 실행하세요.
  - AI 리뷰를 쓰려면 [Claude Code](https://claude.com/claude-code)를 설치하고 터미널에서 로그인해 둡니다.
+ - GitLab을 쓰려면 설정 > Accounts > GitLab에서 `Enable GitLab integration`을 켜고, 서버 주소와
+   개인 액세스 토큰(PAT)으로 로그인합니다. 토큰에는 `api` 권한이 필요합니다(읽기만 하려면 `read_api`).
 
 ## 무엇이 추가되었나요?
 
@@ -62,6 +65,29 @@ curl -L https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/Rev
    전체 기본값과 프로젝트별 설정이 따로 있습니다.
  - **커밋 그래프**: History 목록 왼쪽에 브랜치 흐름을 그리고, 커밋을 선택하면 같은 브랜치의 커밋을
    강조합니다. 브랜치 이름 칩과 현재 브랜치 링도 표시됩니다.
+ - **GitLab 연동**: GitHub 기능과 나란히 동작하며 설정에서 켜고 끕니다(기본값은 꺼짐).
+   gitlab.com과 사내 GitLab 서버(하위 경로 설치 포함)를 지원합니다. 아래에 자세히 정리했습니다.
+
+### GitLab 연동
+
+GitLab 기능은 스위치를 켜고 GitLab에 로그인했을 때만 나타납니다. 끄면 GitHub Desktop과 같게 동작합니다.
+
+| 영역 | 할 수 있는 일 |
+| --- | --- |
+| 로그인 | 서버 주소와 PAT로 로그인합니다. 서버마다 계정 하나씩, 여러 서버를 함께 쓸 수 있습니다. 토큰은 macOS 키체인에만 저장합니다. |
+| 클론 | Clone 대화상자의 **GitLab** 탭에서 내가 속한 프로젝트를 그룹별로 보고 검색해 클론합니다. |
+| Git 인증 | 로그인한 GitLab 서버로 clone, fetch, push 할 때 저장된 토큰을 써서 비밀번호를 묻지 않습니다. |
+| 진입 | 저장소의 remote가 로그인한 GitLab 프로젝트이면 툴바에 **Merge Requests** 버튼이 나타납니다. |
+| 목록 | Open / Merged / Closed / All, 내가 만든 MR, 나에게 리뷰 요청된 MR로 거르고 검색합니다. 현재 브랜치의 MR로 바로 가거나 새로 만들 수 있습니다. |
+| 생성 | 현재 브랜치로 MR을 만듭니다. 제목과 설명(커밋 목록)을 미리 채우고 Draft, 리뷰어를 고릅니다. 같은 브랜치로 머지, 푸시하지 않은 브랜치, 이미 열린 MR 같은 문제는 만들기 전에 이유를 보여 줍니다. |
+| 리뷰 | 설명과 코멘트를 markdown으로 보여 주고 `!12`, `#3`, `@user`를 링크로 바꿉니다. 승인/취소, 스레드 답글과 resolve, 승인·리뷰 요청·커밋 추가 같은 기록을 타임라인으로 봅니다(All / Comments / History). |
+| Changes | 파일별 diff에서 줄을 골라 코멘트를 달고, 바로 올리거나 리뷰 초안으로 모아 한 번에 제출합니다. 라인 코멘트는 해당 코드와 함께 보입니다. |
+| 머지 | 파이프라인 상태와 머지 가능 여부를 보여 줍니다. squash, 소스 브랜치 삭제 옵션으로 머지하고, 파이프라인 진행 중이면 자동 머지, 필요하면 리베이스합니다. |
+| 관리 | 제목·설명 수정, Draft/Ready 전환, 리뷰어·담당자 지정, 닫기와 다시 열기를 합니다. |
+| 편집기 | 코멘트와 설명은 Write / Preview 탭, 서식 버튼, `⌘B` `⌘I` `⌘K` 단축키, 목록 이어쓰기를 지원하고 `⌘Enter`로 올립니다. |
+
+MR 창은 GitLab 색을 쓰는 별도 스타일이며 다크 테마를 지원합니다. 작업 후와 열려 있는 동안
+30초마다 내용을 새로 읽습니다.
 
 <img
   width="1000"
@@ -71,12 +97,19 @@ curl -L https://github.com/tom-kwak/desktop-with-ai/releases/latest/download/Rev
 
 ## ReviewDesk가 나에게 맞을까요?
 
-GitHub Desktop을 쓰면서 커밋이나 브랜치를 올리기 전에 AI에게 한 번 검토받고 싶은 사람에게 맞습니다.
+GitHub Desktop을 쓰면서 커밋이나 브랜치를 올리기 전에 AI에게 한 번 검토받고 싶은 사람, 그리고
+GitLab 머지 리퀘스트를 브라우저 대신 데스크톱에서 리뷰하고 머지하고 싶은 사람에게 맞습니다.
 지금은 다음 한계가 있습니다.
 
  - macOS Apple Silicon 빌드만 제공합니다. Windows 코드는 시험하지 않았습니다.
  - 업스트림 병합을 쉽게 하려고 앱 안에 "GitHub Desktop" 문구를 그대로 두었습니다.
  - 한 번에 보내는 diff는 12만 자, 커밋 로그는 4만 자까지이고 넘으면 잘립니다.
+ - GitLab은 머지 리퀘스트 중심입니다. 이슈, 파이프라인 상세, GitLab에서 저장소 만들기(Publish)는
+   지원하지 않고, GitLab 저장소에서 AI 리뷰 결과를 MR 코멘트로 올리는 기능도 아직 없습니다.
+ - GitLab 로그인은 PAT만 지원합니다(OAuth 없음). 비공개 프로젝트의 이미지는 MR 창에서 보이지 않을 수
+   있고, 이모지 단축어(`:+1:`)는 글자 그대로 나옵니다.
+ - GitLab 기능은 GitLab 19.5 로컬 서버에서 확인했습니다. Premium 이상의 기능(승인 규칙, 머지 트레인 등)은
+   다루지 않습니다.
 
 GitHub Desktop 자체의 방향은 [이 문서](docs/process/what-is-desktop.md)에서 볼 수 있습니다.
 
