@@ -245,6 +245,31 @@ body.theme-dark .gitlab-ui {
     flex: 1;
   }
 
+  .gl-footer-problem,
+  .gl-footer-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 50%;
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    .octicon {
+      flex-shrink: 0;
+      fill: currentColor;
+    }
+  }
+
+  .gl-footer-problem {
+    color: var(--gl-red);
+  }
+
+  .gl-footer-warning {
+    color: var(--gl-orange);
+  }
+
   // ---- Shared blocks ------------------------------------------------------
 
   .gl-empty {

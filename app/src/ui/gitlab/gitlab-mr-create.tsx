@@ -11,7 +11,14 @@ import {
   IGitLabMergeRequest,
   createMergeRequest,
   fetchBranchNames,
+  fetchMergeRequests,
 } from '../../lib/gitlab/gitlab-merge-requests'
+import {
+  ICreateMergeRequestProblem,
+  getCreateMergeRequestProblem,
+  pickDefaultTarget,
+} from '../../lib/gitlab/gitlab-mr-create-checks'
+import { Button } from '../lib/button'
 import {
   IGitLabMember,
   fetchProjectMembers,
@@ -26,6 +33,12 @@ interface IGitLabMRCreateProps {
   readonly sourceBranch: string
   readonly onBusyChanged: (busy: boolean) => void
   readonly onCreated: (mr: IGitLabMergeRequest) => void
+  /** Tells the dialog what blocks creating, for its footer. */
+  readonly onProblemChanged: (
+    problem: ICreateMergeRequestProblem | null
+  ) => void
+  /** Show the branch's existing merge request instead. */
+  readonly onOpenExisting: (mr: IGitLabMergeRequest) => void
 }
 
 interface IGitLabMRCreateState {
@@ -38,6 +51,9 @@ interface IGitLabMRCreateState {
   readonly members: ReadonlyArray<IGitLabMember> | null
   readonly busy: boolean
   readonly error: string | null
+  /** The branch's open merge request; undefined while checking. */
+  readonly existing: IGitLabMergeRequest | null | undefined
+  readonly commitsAhead: number | null
 }
 
 /**
@@ -51,6 +67,9 @@ export class GitLabMRCreate extends React.Component<
   private mounted = false
   /** Whether the user typed a description, so we don't overwrite it. */
   private descriptionEdited = false
+  private errorBanner: HTMLDivElement | null = null
+  /** The last problem reported to the dialog, to report only changes. */
+  private lastProblem: string | null = null
 
   public constructor(props: IGitLabMRCreateProps) {
     super(props)
@@ -64,6 +83,8 @@ export class GitLabMRCreate extends React.Component<
       members: null,
       busy: false,
       error: null,
+      existing: undefined,
+      commitsAhead: null,
     }
   }
 
@@ -87,11 +108,41 @@ export class GitLabMRCreate extends React.Component<
       .catch(() => this.mounted && this.setState({ members: [] }))
 
     this.fillDescription(this.state.targetBranch)
+    this.countCommitsAhead(this.state.targetBranch)
+
+    fetchMergeRequests(connection, project.id, 'opened')
+      .then(open => {
+        if (this.mounted) {
+          this.setState({
+            existing:
+              open.find(m => m.sourceBranch === this.props.sourceBranch) ??
+              null,
+          })
+        }
+      })
+      .catch(() => this.mounted && this.setState({ existing: null }))
 
     try {
       const branches = await fetchBranchNames(connection, project.id)
       if (this.mounted) {
+        const { targetBranch } = this.state
+        const fallback =
+          targetBranch === '' ||
+          targetBranch === this.props.sourceBranch ||
+          !branches.includes(targetBranch)
         this.setState({ branches })
+        if (fallback) {
+          const target = pickDefaultTarget(
+            project.defaultBranch,
+            this.props.sourceBranch,
+            branches
+          )
+          if (target !== targetBranch) {
+            this.setState({ targetBranch: target })
+            this.fillDescription(target)
+            this.countCommitsAhead(target)
+          }
+        }
       }
     } catch (e) {
       log.warn('[GitLab] could not list branches', e)
@@ -101,8 +152,53 @@ export class GitLabMRCreate extends React.Component<
     }
   }
 
+  public componentDidUpdate() {
+    const problem = this.problem()
+    const key = problem === null ? null : problem.message
+    if (key !== this.lastProblem) {
+      this.lastProblem = key
+      this.props.onProblemChanged(problem)
+    }
+  }
+
   public componentWillUnmount() {
     this.mounted = false
+  }
+
+  private problem(): ICreateMergeRequestProblem | null {
+    const { title, targetBranch, branches, existing, commitsAhead } = this.state
+    return getCreateMergeRequestProblem({
+      title,
+      sourceBranch: this.props.sourceBranch,
+      targetBranch,
+      remoteBranches: branches,
+      existingIid: existing?.iid ?? null,
+      commitsAhead,
+    })
+  }
+
+  /** How many local commits the target branch on GitLab doesn't have. */
+  private async countCommitsAhead(target: string) {
+    if (target.length === 0) {
+      return
+    }
+    const { repository } = this.props.context
+    try {
+      const result = await git(
+        ['rev-list', '--count', `refs/remotes/origin/${target}..HEAD`],
+        repository.path,
+        'gitLabMRCommitsAhead',
+        { successExitCodes: new Set([0, 128]) }
+      )
+      if (this.mounted && this.state.targetBranch === target) {
+        this.setState({
+          commitsAhead:
+            result.exitCode === 0 ? parseInt(result.stdout.trim(), 10) : null,
+        })
+      }
+    } catch {
+      // Unknown; don't warn.
+    }
   }
 
   /** List the branch's commits that aren't on the target yet. */
@@ -136,8 +232,11 @@ export class GitLabMRCreate extends React.Component<
   /** Called by the dialog when its primary button is pressed. */
   public submit = async () => {
     const { connection, project } = this.props.context
-    const { title, description, targetBranch, draft, reviewers } = this.state
-    if (!this.canSubmit()) {
+    const { title, description, targetBranch, draft, reviewers, busy } =
+      this.state
+    const problem = this.problem()
+    if (busy || (problem !== null && problem.blocking)) {
+      // The reason is shown next to the button and in the form.
       return
     }
 
@@ -158,19 +257,11 @@ export class GitLabMRCreate extends React.Component<
     } catch (e) {
       if (this.mounted) {
         this.setBusy(false)
-        this.setState({ error: errorMessage(e) })
+        this.setState({ error: errorMessage(e) }, () =>
+          this.errorBanner?.scrollIntoView({ block: 'nearest' })
+        )
       }
     }
-  }
-
-  public canSubmit() {
-    const { title, targetBranch, busy } = this.state
-    return (
-      !busy &&
-      title.trim().length > 0 &&
-      targetBranch.length > 0 &&
-      targetBranch !== this.props.sourceBranch
-    )
   }
 
   private setBusy(busy: boolean) {
@@ -187,8 +278,19 @@ export class GitLabMRCreate extends React.Component<
 
   private onTargetChanged = (event: React.FormEvent<HTMLSelectElement>) => {
     const targetBranch = event.currentTarget.value
-    this.setState({ targetBranch })
+    this.setState({ targetBranch, commitsAhead: null })
     this.fillDescription(targetBranch)
+    this.countCommitsAhead(targetBranch)
+  }
+
+  private onErrorBannerRef = (el: HTMLDivElement | null) => {
+    this.errorBanner = el
+  }
+
+  private openExisting = () => {
+    if (this.state.existing != null) {
+      this.props.onOpenExisting(this.state.existing)
+    }
   }
 
   private onDraftChanged = (event: React.FormEvent<HTMLInputElement>) =>
@@ -217,7 +319,7 @@ export class GitLabMRCreate extends React.Component<
     if (targetBranch !== '' && !targets.includes(targetBranch)) {
       targets.unshift(targetBranch)
     }
-    const notPushed = branches !== null && !branches.includes(sourceBranch)
+    const problem = this.problem()
 
     const links = {
       projectURL: this.props.context.project.webURL,
@@ -228,7 +330,12 @@ export class GitLabMRCreate extends React.Component<
       <GitLabMarkdownContext.Provider value={links}>
         <div className="gl-mr-create">
           {error !== null && (
-            <ErrorBanner message={error} onDismiss={this.dismissError} />
+            <div ref={this.onErrorBannerRef}>
+              <ErrorBanner
+                message={`GitLab couldn't create the merge request: ${error}`}
+                onDismiss={this.dismissError}
+              />
+            </div>
           )}
           <div className="gl-branch-flow">
             <code className="gl-branch">{sourceBranch}</code>
@@ -246,13 +353,18 @@ export class GitLabMRCreate extends React.Component<
               ))}
             </Select>
           </div>
-          {notPushed && (
-            <div className="gl-warning" role="status">
+          {problem !== null && (
+            <div
+              className={problem.blocking ? 'gl-error-banner' : 'gl-warning'}
+              role="status"
+            >
               <Octicon symbol={octicons.alert} />
-              <span>
-                GitLab doesn't have <code>{sourceBranch}</code> yet. Push the
-                branch first, then create the merge request.
-              </span>
+              <span>{problem.message}</span>
+              {problem.existingIid !== undefined && (
+                <Button size="small" onClick={this.openExisting}>
+                  View !{problem.existingIid}
+                </Button>
+              )}
             </div>
           )}
           <div className="gl-create-grid">

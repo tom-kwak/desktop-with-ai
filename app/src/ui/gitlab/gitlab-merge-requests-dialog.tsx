@@ -14,6 +14,7 @@ import {
   fetchProjectInfo,
 } from '../../lib/gitlab/gitlab-merge-requests'
 import { IGitLabMRContext, errorMessage } from './gitlab-mr-common'
+import { ICreateMergeRequestProblem } from '../../lib/gitlab/gitlab-mr-create-checks'
 import { GitLabMRList } from './gitlab-mr-list'
 import { GitLabMRCreate } from './gitlab-mr-create'
 import { GitLabMRDetail } from './gitlab-mr-detail'
@@ -34,6 +35,8 @@ interface IGitLabMergeRequestsDialogState {
   readonly loadError: string | null
   readonly view: View
   readonly creating: boolean
+  /** What keeps the new merge request from being created, if anything. */
+  readonly createProblem: ICreateMergeRequestProblem | null
   /** Bumped to make the list reload when coming back to it. */
   readonly listVersion: number
 }
@@ -56,6 +59,7 @@ export class GitLabMergeRequestsDialog extends React.Component<
       loadError: null,
       view: { kind: 'list' },
       creating: false,
+      createProblem: null,
       listVersion: 0,
     }
   }
@@ -113,7 +117,10 @@ export class GitLabMergeRequestsDialog extends React.Component<
   private showCreate = () => {
     const branch = this.state.context?.currentBranch
     if (branch != null) {
-      this.setState({ view: { kind: 'create', sourceBranch: branch } })
+      this.setState({
+        view: { kind: 'create', sourceBranch: branch },
+        createProblem: null,
+      })
     }
   }
 
@@ -123,6 +130,10 @@ export class GitLabMergeRequestsDialog extends React.Component<
   private onChanged = () => undefined
 
   private onCreatingChanged = (creating: boolean) => this.setState({ creating })
+
+  private onCreateProblemChanged = (
+    createProblem: ICreateMergeRequestProblem | null
+  ) => this.setState({ createProblem })
 
   private onCreateFormRef = (form: GitLabMRCreate | null) => {
     this.createForm = form
@@ -221,6 +232,8 @@ export class GitLabMergeRequestsDialog extends React.Component<
             sourceBranch={view.sourceBranch}
             onBusyChanged={this.onCreatingChanged}
             onCreated={this.showDetail}
+            onProblemChanged={this.onCreateProblemChanged}
+            onOpenExisting={this.showDetail}
           />
         )
       case 'detail':
@@ -236,7 +249,8 @@ export class GitLabMergeRequestsDialog extends React.Component<
   }
 
   private renderFooter() {
-    const { view, creating, context } = this.state
+    const { view, creating, context, createProblem } = this.state
+    const blocked = createProblem !== null && createProblem.blocking
     return (
       <DialogFooter>
         <div className="gl-footer">
@@ -251,9 +265,21 @@ export class GitLabMergeRequestsDialog extends React.Component<
             </Button>
           )}
           <span className="gl-footer-spacer" />
+          {view.kind === 'create' && createProblem !== null && (
+            <span
+              className={blocked ? 'gl-footer-problem' : 'gl-footer-warning'}
+            >
+              <Octicon symbol={octicons.alert} />
+              {createProblem.message}
+            </span>
+          )}
           {view.kind === 'create' ? (
-            <Button type="submit" className="gl-primary" disabled={creating}>
-              Create merge request
+            <Button
+              type="submit"
+              className="gl-primary"
+              disabled={creating || blocked}
+            >
+              {creating ? 'Creating…' : 'Create merge request'}
             </Button>
           ) : (
             <Button onClick={this.props.onDismissed}>Close</Button>
