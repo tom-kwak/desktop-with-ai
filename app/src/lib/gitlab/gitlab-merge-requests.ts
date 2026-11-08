@@ -170,6 +170,8 @@ export interface IGitLabMergeRequest {
   readonly createdAt: string
   readonly updatedAt: string
   readonly userNotesCount: number
+  /** The latest commit of the source branch, or null if GitLab didn't say. */
+  readonly headSha: string | null
 }
 
 /** A comment on a merge request. */
@@ -234,6 +236,7 @@ export function parseMergeRequest(value: unknown): IGitLabMergeRequest | null {
     updatedAt: str(value.updated_at) ?? '',
     userNotesCount:
       typeof value.user_notes_count === 'number' ? value.user_notes_count : 0,
+    headSha: str(value.sha),
   }
 }
 
@@ -375,4 +378,275 @@ export async function addMergeRequestComment(
     { body: text }
   )
   return parseOne(body, parseNote)
+}
+
+/** Where in the diff a line comment was left. */
+export interface IGitLabNotePosition {
+  readonly oldPath: string
+  readonly newPath: string
+  /** Line in the old file; null for an added line. */
+  readonly oldLine: number | null
+  /** Line in the new file; null for a removed line. */
+  readonly newLine: number | null
+  /** First line of a multi-line comment, when it spans several lines. */
+  readonly startOldLine: number | null
+  readonly startNewLine: number | null
+  /** The commit the comment was made against. */
+  readonly headSha: string | null
+}
+
+/** A comment thread: a general comment, or a comment on lines of the diff. */
+export interface IGitLabDiscussion {
+  readonly id: string
+  /** The comment and its replies, oldest first, without system notes. */
+  readonly notes: ReadonlyArray<IGitLabNote>
+  /** Set for comments on lines of the diff. */
+  readonly position: IGitLabNotePosition | null
+  readonly resolved: boolean
+}
+
+function num(value: unknown): number | null {
+  return typeof value === 'number' ? value : null
+}
+
+export function parseNotePosition(value: unknown): IGitLabNotePosition | null {
+  if (!isRecord(value) || value.position_type !== 'text') {
+    return null
+  }
+  const oldPath = str(value.old_path)
+  const newPath = str(value.new_path)
+  if (oldPath === null && newPath === null) {
+    return null
+  }
+  const oldLine = num(value.old_line)
+  const newLine = num(value.new_line)
+  if (oldLine === null && newLine === null) {
+    return null
+  }
+
+  const range = isRecord(value.line_range) ? value.line_range : null
+  const start = range !== null && isRecord(range.start) ? range.start : null
+
+  return {
+    oldPath: oldPath ?? newPath ?? '',
+    newPath: newPath ?? oldPath ?? '',
+    oldLine,
+    newLine,
+    startOldLine: start !== null ? num(start.old_line) : null,
+    startNewLine: start !== null ? num(start.new_line) : null,
+    headSha: str(value.head_sha),
+  }
+}
+
+export function parseDiscussion(value: unknown): IGitLabDiscussion | null {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    !Array.isArray(value.notes)
+  ) {
+    return null
+  }
+  const all = value.notes.filter(isRecord)
+  const notes = new Array<IGitLabNote>()
+  for (const item of all) {
+    const note = parseNote(item)
+    if (note !== null && !note.system) {
+      notes.push(note)
+    }
+  }
+  if (notes.length === 0) {
+    return null
+  }
+
+  const first = all[0]
+  const position =
+    first.type === 'DiffNote' ? parseNotePosition(first.position) : null
+  const resolvable = all.filter(n => n.resolvable === true)
+
+  return {
+    id: value.id,
+    notes,
+    position,
+    resolved: resolvable.length > 0 && resolvable.every(n => n.resolved),
+  }
+}
+
+/** A merge request's comment threads, oldest first. */
+export async function fetchMergeRequestDiscussions(
+  connection: IGitLabConnection,
+  projectId: number,
+  iid: number
+): Promise<ReadonlyArray<IGitLabDiscussion>> {
+  const body = await request(
+    connection,
+    'GET',
+    `/projects/${projectId}/merge_requests/${iid}/discussions?per_page=100`
+  )
+  return parseList(body, parseDiscussion)
+}
+
+/** One changed file of a merge request, with its unified diff. */
+export interface IGitLabDiffFile {
+  readonly oldPath: string
+  readonly newPath: string
+  /** Empty when GitLab left the diff out, e.g. because it is too large. */
+  readonly diff: string
+}
+
+function parseDiffFile(value: unknown): IGitLabDiffFile | null {
+  if (!isRecord(value)) {
+    return null
+  }
+  const oldPath = str(value.old_path)
+  const newPath = str(value.new_path)
+  if (oldPath === null || newPath === null) {
+    return null
+  }
+  return { oldPath, newPath, diff: str(value.diff) ?? '' }
+}
+
+/**
+ * The changed files of a merge request. Uses `/diffs` (GitLab 15.7 and
+ * later) and falls back to the older `/changes` endpoint.
+ */
+export async function fetchMergeRequestDiffs(
+  connection: IGitLabConnection,
+  projectId: number,
+  iid: number
+): Promise<ReadonlyArray<IGitLabDiffFile>> {
+  const base = `/projects/${projectId}/merge_requests/${iid}`
+  try {
+    const body = await request(connection, 'GET', `${base}/diffs?per_page=100`)
+    return parseList(body, parseDiffFile)
+  } catch (e) {
+    if (!(e instanceof GitLabAPIError) || e.status !== 404) {
+      throw e
+    }
+  }
+  const body = await request(connection, 'GET', `${base}/changes`)
+  return parseList(isRecord(body) ? body.changes : body, parseDiffFile)
+}
+
+/** A line of a diff excerpt shown above a line comment. */
+export interface IDiffExcerptLine {
+  readonly kind: 'add' | 'delete' | 'context'
+  readonly oldLine: number | null
+  readonly newLine: number | null
+  readonly text: string
+  /** Whether the comment is on this line. */
+  readonly commented: boolean
+}
+
+interface IParsedDiffLine extends IDiffExcerptLine {
+  readonly hunk: number
+}
+
+function parseUnifiedDiff(diff: string): ReadonlyArray<IParsedDiffLine> {
+  const lines = new Array<IParsedDiffLine>()
+  let hunk = -1
+  let oldLine = 0
+  let newLine = 0
+
+  for (const raw of diff.split('\n')) {
+    const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(raw)
+    if (header !== null) {
+      hunk++
+      oldLine = parseInt(header[1], 10)
+      newLine = parseInt(header[2], 10)
+      continue
+    }
+    if (hunk < 0) {
+      continue
+    }
+    const marker = raw.charAt(0)
+    const text = raw.slice(1)
+    if (marker === '+') {
+      lines.push({
+        kind: 'add',
+        oldLine: null,
+        newLine,
+        text,
+        commented: false,
+        hunk,
+      })
+      newLine++
+    } else if (marker === '-') {
+      lines.push({
+        kind: 'delete',
+        oldLine,
+        newLine: null,
+        text,
+        commented: false,
+        hunk,
+      })
+      oldLine++
+    } else if (marker === ' ') {
+      lines.push({
+        kind: 'context',
+        oldLine,
+        newLine,
+        text,
+        commented: false,
+        hunk,
+      })
+      oldLine++
+      newLine++
+    }
+  }
+  return lines
+}
+
+function findLine(
+  lines: ReadonlyArray<IParsedDiffLine>,
+  oldLine: number | null,
+  newLine: number | null
+) {
+  return newLine !== null
+    ? lines.findIndex(l => l.newLine === newLine)
+    : lines.findIndex(l => l.kind === 'delete' && l.oldLine === oldLine)
+}
+
+/**
+ * The lines of a diff a line comment refers to, with a few lines of
+ * context above them, like GitLab shows above a comment thread. Returns
+ * null when the commented lines aren't in the diff.
+ */
+export function getDiffExcerpt(
+  files: ReadonlyArray<IGitLabDiffFile>,
+  position: IGitLabNotePosition,
+  contextLines = 3
+): ReadonlyArray<IDiffExcerptLine> | null {
+  const file =
+    files.find(f => f.newPath === position.newPath) ??
+    files.find(f => f.oldPath === position.oldPath)
+  if (file === undefined) {
+    return null
+  }
+
+  const lines = parseUnifiedDiff(file.diff)
+  const end = findLine(lines, position.oldLine, position.newLine)
+  if (end < 0) {
+    return null
+  }
+
+  let start = end
+  if (position.startOldLine !== null || position.startNewLine !== null) {
+    const found = findLine(lines, position.startOldLine, position.startNewLine)
+    if (found >= 0 && found <= end && lines[found].hunk === lines[end].hunk) {
+      start = found
+    }
+  }
+
+  let first = Math.max(0, start - contextLines)
+  while (lines[first].hunk !== lines[end].hunk) {
+    first++
+  }
+
+  return lines.slice(first, end + 1).map((l, i) => ({
+    kind: l.kind,
+    oldLine: l.oldLine,
+    newLine: l.newLine,
+    text: l.text,
+    commented: first + i >= start,
+  }))
 }

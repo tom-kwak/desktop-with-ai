@@ -17,13 +17,18 @@ import { IGitLabRemoteMatch } from '../../lib/gitlab/gitlab-remote'
 import { getGitLabAccountsStore } from '../../lib/gitlab/gitlab-accounts'
 import {
   IGitLabConnection,
+  IGitLabDiffFile,
+  IGitLabDiscussion,
   IGitLabMergeRequest,
   IGitLabNote,
+  IGitLabNotePosition,
   IGitLabProjectInfo,
   addMergeRequestComment,
   createMergeRequest,
   fetchBranchNames,
-  fetchMergeRequestComments,
+  fetchMergeRequestDiffs,
+  fetchMergeRequestDiscussions,
+  getDiffExcerpt,
   fetchMergeRequests,
   fetchProjectInfo,
 } from '../../lib/gitlab/gitlab-merge-requests'
@@ -61,9 +66,24 @@ interface IGitLabMergeRequestsDialogState {
   readonly formError: string | null
 
   // Detail view
-  readonly comments: ReadonlyArray<IGitLabNote> | null
+  readonly discussions: ReadonlyArray<IGitLabDiscussion> | null
+  /** The merge request's diff, for showing the code line comments are on. */
+  readonly diffs: ReadonlyArray<IGitLabDiffFile> | null
   readonly commentsError: string | null
   readonly commentDraft: string
+}
+
+function countNotes(discussions: ReadonlyArray<IGitLabDiscussion>) {
+  return discussions.reduce((n, d) => n + d.notes.length, 0)
+}
+
+/** `src/app.ts:12`, or `src/app.ts:10-12` for a comment on several lines. */
+function describePosition(position: IGitLabNotePosition) {
+  const end = position.newLine ?? position.oldLine
+  const start = position.startNewLine ?? position.startOldLine
+  const lines = start !== null && start !== end ? `${start}-${end}` : `${end}`
+  const path = position.newLine !== null ? position.newPath : position.oldPath
+  return `${path}:${lines}`
 }
 
 function errorMessage(e: unknown) {
@@ -94,7 +114,8 @@ export class GitLabMergeRequestsDialog extends React.Component<
       targetBranch: '',
       busy: false,
       formError: null,
-      comments: null,
+      discussions: null,
+      diffs: null,
       commentsError: null,
       commentDraft: '',
     }
@@ -217,7 +238,8 @@ export class GitLabMergeRequestsDialog extends React.Component<
   private showDetail = (mergeRequest: IGitLabMergeRequest) => {
     this.setState({
       view: { kind: 'detail', mergeRequest },
-      comments: null,
+      discussions: null,
+      diffs: null,
       commentsError: null,
       commentDraft: '',
     })
@@ -229,14 +251,31 @@ export class GitLabMergeRequestsDialog extends React.Component<
     if (context === null) {
       return
     }
+    const { connection, project } = context
+
+    // The diff only adds code to line comments, so a failure there doesn't
+    // hide the comments.
+    fetchMergeRequestDiffs(connection, project.id, mergeRequest.iid)
+      .then(diffs => {
+        if (this.mounted) {
+          this.setState({ diffs })
+        }
+      })
+      .catch(e => {
+        log.warn('[GitLab] could not load the merge request diff', e)
+        if (this.mounted) {
+          this.setState({ diffs: [] })
+        }
+      })
+
     try {
-      const comments = await fetchMergeRequestComments(
-        context.connection,
-        context.project.id,
+      const discussions = await fetchMergeRequestDiscussions(
+        connection,
+        project.id,
         mergeRequest.iid
       )
       if (this.mounted) {
-        this.setState({ comments })
+        this.setState({ discussions })
       }
     } catch (e) {
       if (this.mounted) {
@@ -306,7 +345,15 @@ export class GitLabMergeRequestsDialog extends React.Component<
         this.setState(s => ({
           busy: false,
           commentDraft: '',
-          comments: [...(s.comments ?? []), note],
+          discussions: [
+            ...(s.discussions ?? []),
+            {
+              id: `note-${note.id}`,
+              notes: [note],
+              position: null,
+              resolved: false,
+            },
+          ],
         }))
       }
     } catch (e) {
@@ -513,7 +560,7 @@ export class GitLabMergeRequestsDialog extends React.Component<
   }
 
   private renderDetail(mr: IGitLabMergeRequest) {
-    const { comments, commentsError, commentDraft, busy } = this.state
+    const { discussions, commentsError, commentDraft, busy } = this.state
 
     return (
       <div className="gitlab-mr-detail">
@@ -534,30 +581,19 @@ export class GitLabMergeRequestsDialog extends React.Component<
             : 'No description.'}
         </div>
 
-        <h3>Comments{comments !== null ? ` (${comments.length})` : ''}</h3>
+        <h3>
+          Comments{discussions !== null ? ` (${countNotes(discussions)})` : ''}
+        </h3>
         {commentsError !== null && (
           <p className="gitlab-mr-error">{commentsError}</p>
         )}
-        {comments === null && commentsError === null ? (
+        {discussions === null && commentsError === null ? (
           <p className="gitlab-mr-loading">
             <Loading /> Loading comments…
           </p>
         ) : (
           <ul className="gitlab-mr-comments">
-            {(comments ?? []).map(note => (
-              <li key={note.id}>
-                <div className="gitlab-mr-item-meta">
-                  {note.author ? `@${note.author.username}` : 'Someone'}
-                  {note.createdAt ? (
-                    <>
-                      {' · '}
-                      <RelativeTime date={new Date(note.createdAt)} />
-                    </>
-                  ) : null}
-                </div>
-                <div className="gitlab-mr-text">{note.body}</div>
-              </li>
-            ))}
+            {(discussions ?? []).map(d => this.renderDiscussion(mr, d))}
           </ul>
         )}
 
@@ -576,6 +612,88 @@ export class GitLabMergeRequestsDialog extends React.Component<
             Comment
           </Button>
         </div>
+      </div>
+    )
+  }
+
+  private renderDiscussion(mr: IGitLabMergeRequest, d: IGitLabDiscussion) {
+    return (
+      <li key={d.id}>
+        {d.position !== null && this.renderPosition(mr, d)}
+        {d.notes.map(note => (
+          <div
+            key={note.id}
+            className={d.position !== null ? 'gitlab-mr-thread-note' : ''}
+          >
+            {this.renderNote(note)}
+          </div>
+        ))}
+      </li>
+    )
+  }
+
+  private renderNote(note: IGitLabNote) {
+    return (
+      <>
+        <div className="gitlab-mr-item-meta">
+          {note.author ? `@${note.author.username}` : 'Someone'}
+          {note.createdAt ? (
+            <>
+              {' · '}
+              <RelativeTime date={new Date(note.createdAt)} />
+            </>
+          ) : null}
+        </div>
+        <div className="gitlab-mr-text">{note.body}</div>
+      </>
+    )
+  }
+
+  private renderPosition(mr: IGitLabMergeRequest, d: IGitLabDiscussion) {
+    const position = d.position as IGitLabNotePosition
+    const { diffs } = this.state
+    const outdated =
+      position.headSha !== null &&
+      mr.headSha !== null &&
+      position.headSha !== mr.headSha
+    const excerpt =
+      diffs !== null && !outdated ? getDiffExcerpt(diffs, position) : null
+
+    return (
+      <div className="gitlab-mr-position">
+        <div className="gitlab-mr-position-header">
+          <Octicon symbol={octicons.fileCode} />
+          <span className="gitlab-mr-position-path">
+            {describePosition(position)}
+          </span>
+          {outdated && <span className="gitlab-mr-badge">outdated</span>}
+          {d.resolved && <span className="gitlab-mr-badge">resolved</span>}
+        </div>
+        {excerpt !== null && (
+          <table className="gitlab-mr-excerpt">
+            <tbody>
+              {excerpt.map((line, i) => (
+                <tr
+                  key={i}
+                  className={`${line.kind}${
+                    line.commented ? ' commented' : ''
+                  }`}
+                >
+                  <td className="line-number">{line.oldLine ?? ''}</td>
+                  <td className="line-number">{line.newLine ?? ''}</td>
+                  <td className="line-text">
+                    {line.kind === 'add'
+                      ? '+'
+                      : line.kind === 'delete'
+                      ? '-'
+                      : ' '}
+                    {line.text}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     )
   }

@@ -99,6 +99,76 @@
     border-bottom: var(--base-border);
   }
 
+  .gitlab-mr-position {
+    margin-bottom: var(--spacing-half);
+    border: var(--base-border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+  }
+
+  .gitlab-mr-position-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-half);
+    padding: var(--spacing-half);
+    background: var(--box-alt-background-color);
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+
+    .gitlab-mr-position-path {
+      flex: 1;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .gitlab-mr-badge {
+    font-family: var(--font-family-sans-serif);
+    padding: 0 var(--spacing-half);
+    border: var(--base-border);
+    border-radius: var(--border-radius);
+    color: var(--text-secondary-color);
+  }
+
+  .gitlab-mr-excerpt {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+
+    td {
+      padding: 0 var(--spacing-half);
+      vertical-align: top;
+    }
+
+    .line-number {
+      width: 1%;
+      text-align: right;
+      color: var(--text-secondary-color);
+      user-select: none;
+    }
+
+    .line-text {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .add {
+      background: var(--diff-add-background-color);
+    }
+
+    .delete {
+      background: var(--diff-delete-background-color);
+    }
+
+    .commented .line-text {
+      box-shadow: inset 2px 0 0 var(--focus-color);
+    }
+  }
+
+  .gitlab-mr-thread-note {
+    padding-left: var(--spacing);
+  }
+
   .gitlab-mr-text {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
