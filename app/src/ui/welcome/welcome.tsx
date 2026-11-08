@@ -8,6 +8,7 @@ import { SignInState, SignInStep } from '../../lib/stores'
 import { assertNever } from '../../lib/fatal-error'
 import { Start } from './start'
 import { SignInEnterprise } from './sign-in-enterprise'
+import { SignInGitLab } from './sign-in-gitlab'
 import { ConfigureGit } from './configure-git'
 import { UiView } from '../ui-view'
 import { getGlobalConfigValue } from '../../lib/git'
@@ -17,6 +18,7 @@ export enum WelcomeStep {
   Start = 'Start',
   SignInToDotComWithBrowser = 'SignInToDotComWithBrowser',
   SignInToEnterprise = 'SignInToEnterprise',
+  SignInToGitLab = 'SignInToGitLab',
   ConfigureGit = 'ConfigureGit',
 }
 
@@ -180,6 +182,9 @@ export class Welcome extends React.Component<IWelcomeProps, IWelcomeState> {
             signInState={signInState}
           />
         )
+
+      case WelcomeStep.SignInToGitLab:
+        return <SignInGitLab advance={this.advanceToStep} />
 
       case WelcomeStep.ConfigureGit:
         return (

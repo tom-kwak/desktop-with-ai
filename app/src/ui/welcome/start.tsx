@@ -8,6 +8,7 @@ import { Button } from '../lib/button'
 import { Loading } from '../lib/loading'
 import { BrowserRedirectMessage } from '../lib/authentication-form'
 import { SamplesURL } from '../../lib/stats'
+import { isGitLabEnabled } from '../../lib/gitlab/gitlab-accounts'
 
 /**
  * The URL to the sign-up page on GitHub.com. Used in conjunction
@@ -63,9 +64,16 @@ export class Start extends React.Component<IStartProps, {}> {
             {this.props.loadingBrowserAuth ? (
               <Button onClick={this.cancelBrowserAuth}>Cancel</Button>
             ) : (
-              <Button onClick={this.signInToEnterprise}>
-                Sign in to GitHub Enterprise
-              </Button>
+              <>
+                <Button onClick={this.signInToEnterprise}>
+                  Sign in to GitHub Enterprise
+                </Button>
+                {isGitLabEnabled() && (
+                  <Button onClick={this.signInToGitLab}>
+                    Sign in to GitLab
+                  </Button>
+                )}
+              </>
             )}
           </div>
           <div className="skip-action-container">
@@ -122,6 +130,10 @@ export class Start extends React.Component<IStartProps, {}> {
 
   private signInToEnterprise = () => {
     this.props.advance(WelcomeStep.SignInToEnterprise)
+  }
+
+  private signInToGitLab = () => {
+    this.props.advance(WelcomeStep.SignInToGitLab)
   }
 
   private skip = () => {

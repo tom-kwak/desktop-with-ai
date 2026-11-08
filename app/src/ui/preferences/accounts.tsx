@@ -13,6 +13,7 @@ import { DialogContent, DialogPreferredFocusClassName } from '../dialog'
 import { Avatar } from '../lib/avatar'
 import { CallToAction } from '../lib/call-to-action'
 import { getHTMLURL } from '../../lib/api'
+import { GitLabAccountsSection } from '../gitlab/gitlab-accounts-section'
 
 interface IAccountsProps {
   readonly accounts: ReadonlyArray<Account>
@@ -41,6 +42,9 @@ export class Accounts extends React.Component<IAccountsProps, {}> {
 
         <h2>GitHub Enterprise</h2>
         {this.renderMultipleEnterpriseAccounts()}
+
+        <h2>GitLab</h2>
+        <GitLabAccountsSection />
       </DialogContent>
     )
   }

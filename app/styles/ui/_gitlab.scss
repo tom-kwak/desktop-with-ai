@@ -1,0 +1,1865 @@
+// GitLab sign-in, shared by the welcome flow and Preferences > Accounts.
+
+.gitlab-sign-in-form {
+  .gitlab-token-help {
+    color: var(--text-secondary-color);
+    margin: 0 0 var(--spacing);
+  }
+}
+
+#welcome #sign-in-gitlab {
+  .gitlab-sign-in-form {
+    margin-top: var(--spacing-double);
+  }
+
+  .actions {
+    display: inline-block;
+    margin-top: var(--spacing);
+  }
+}
+
+.accounts-tab .gitlab-accounts {
+  .gitlab-sign-in-form {
+    margin-top: var(--spacing);
+
+    .actions .button-component {
+      margin-right: var(--spacing);
+    }
+  }
+}
+
+#desktop-app-toolbar .gitlab-merge-requests-button {
+  width: 230px;
+
+  .gitlab-toolbar-pipeline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gl-ci-icon {
+    display: inline-flex;
+
+    .octicon {
+      width: 11px;
+      height: 11px;
+      fill: currentColor;
+    }
+  }
+
+  // The toolbar is always dark-ish; use bright status colors.
+  .gl-pipeline-success {
+    color: #2da160;
+  }
+  .gl-pipeline-failed {
+    color: #ec5941;
+  }
+  .gl-pipeline-running,
+  .gl-pipeline-pending,
+  .gl-pipeline-created,
+  .gl-pipeline-preparing,
+  .gl-pipeline-waiting_for_resource {
+    color: #428fdc;
+  }
+}
+
+// ---- GitLab merge requests ------------------------------------------------
+//
+// The merge request window has its own look, close to GitLab's design system,
+// so it's clear these screens talk to GitLab rather than GitHub. Colors are
+// scoped to `.gitlab-ui` and follow the app's light and dark themes.
+
+.gitlab-ui {
+  --gl-brand: #fc6d26;
+  --gl-brand-dark: #e24329;
+  --gl-purple: #7759c2;
+  --gl-blue: #1f75cb;
+  --gl-blue-hover: #1068bf;
+  --gl-green: #108548;
+  --gl-red: #dd2b0e;
+  --gl-orange: #ab6100;
+  --gl-text: #333238;
+  --gl-text-muted: #626168;
+  --gl-bg: #ffffff;
+  --gl-bg-subtle: #fbfafd;
+  --gl-bg-strong: #ececef;
+  --gl-border: #dcdcde;
+  --gl-blue-bg: #e9f3fc;
+  --gl-green-bg: #ecf4ee;
+  --gl-red-bg: #fcf1ef;
+  --gl-orange-bg: #fdf1dd;
+  --gl-purple-bg: #f4f0ff;
+  --gl-diff-add: #ecfdf0;
+  --gl-diff-add-num: #ddfbe6;
+  --gl-diff-del: #fbe9eb;
+  --gl-diff-del-num: #f9d7dc;
+  --gl-radius: 4px;
+}
+
+body.theme-dark .gitlab-ui {
+  // Native controls (text boxes, selects, scrollbars) follow the theme.
+  color-scheme: dark;
+  --gl-blue: #428fdc;
+  --gl-blue-hover: #63a6e9;
+  --gl-green: #2da160;
+  --gl-red: #ec5941;
+  --gl-orange: #d99530;
+  --gl-purple: #a989f5;
+  --gl-text: #ececef;
+  --gl-text-muted: #bfbfc3;
+  --gl-bg: #18171d;
+  --gl-bg-subtle: #1f1e24;
+  --gl-bg-strong: #333238;
+  --gl-border: #434248;
+  --gl-blue-bg: #13406c;
+  --gl-green-bg: #0d532a;
+  --gl-red-bg: #8d1300;
+  --gl-orange-bg: #5c3900;
+  --gl-purple-bg: #2f2a6b;
+  --gl-diff-add: #1c3a2a;
+  --gl-diff-add-num: #24503a;
+  --gl-diff-del: #4a1f22;
+  --gl-diff-del-num: #63262b;
+}
+
+#gitlab-merge-requests {
+  width: 920px;
+  max-width: calc(100vw - 80px);
+  color: var(--gl-text);
+  background: var(--gl-bg);
+  border-top: 3px solid var(--gl-brand);
+
+  .dialog-header {
+    background: var(--gl-bg);
+    border-bottom: 1px solid var(--gl-border);
+  }
+
+  .dialog-content {
+    height: min(640px, calc(100vh - 220px));
+    overflow-y: auto;
+    padding: var(--spacing-double);
+    background: var(--gl-bg);
+  }
+
+  .dialog-footer {
+    background: var(--gl-bg-subtle);
+    border-top: 1px solid var(--gl-border);
+  }
+
+  code,
+  .gl-branch {
+    font-family: var(--font-family-monospace);
+    font-size: 0.92em;
+  }
+
+  .gl-branch {
+    padding: 1px 6px;
+    border-radius: var(--gl-radius);
+    background: var(--gl-blue-bg);
+    color: var(--gl-blue);
+    overflow-wrap: anywhere;
+  }
+
+  .gl-meta {
+    color: var(--gl-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  // ---- Buttons ------------------------------------------------------------
+
+  .button-component.gl-primary {
+    background: var(--gl-blue);
+    border-color: var(--gl-blue);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: var(--gl-blue-hover);
+      border-color: var(--gl-blue-hover);
+    }
+
+    &:disabled {
+      opacity: 0.55;
+    }
+
+    .octicon {
+      fill: currentColor;
+    }
+  }
+
+  .button-component.gl-merge-button {
+    background: var(--gl-green);
+    border-color: var(--gl-green);
+
+    &:hover:not(:disabled) {
+      background: var(--gl-green);
+      filter: brightness(1.1);
+    }
+  }
+
+  .button-component .octicon {
+    margin-right: 4px;
+    vertical-align: text-bottom;
+  }
+
+  .gl-spinning .octicon {
+    animation: gl-spin 1s linear infinite;
+  }
+
+  .gl-link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--gl-blue);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+
+  .gl-danger-link {
+    color: var(--gl-red);
+  }
+
+  // ---- Title and footer ---------------------------------------------------
+
+  .gl-dialog-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-half);
+    min-width: 0;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .gl-brand {
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: var(--gl-brand);
+    color: #fff;
+    font-size: var(--font-size-sm);
+    letter-spacing: 0.02em;
+  }
+
+  .gl-crumb {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--gl-blue);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .gl-crumb-sep {
+    color: var(--gl-text-muted);
+  }
+
+  .gl-crumb-current {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gl-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    width: 100%;
+  }
+
+  .gl-footer-spacer {
+    flex: 1;
+  }
+
+  .gl-footer-problem,
+  .gl-footer-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 50%;
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    .octicon {
+      flex-shrink: 0;
+      fill: currentColor;
+    }
+  }
+
+  .gl-footer-problem {
+    color: var(--gl-red);
+  }
+
+  .gl-footer-warning {
+    color: var(--gl-orange);
+  }
+
+  // ---- Shared blocks ------------------------------------------------------
+
+  .gl-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing);
+    padding: var(--spacing-double) var(--spacing);
+    color: var(--gl-text-muted);
+    text-align: center;
+
+    .octicon {
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .gl-error-banner,
+  .gl-notice,
+  .gl-warning,
+  .gl-review-bar,
+  .gl-callout {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    padding: var(--spacing);
+    margin-bottom: var(--spacing);
+    border-radius: var(--gl-radius);
+    border: 1px solid var(--gl-border);
+
+    > span {
+      flex: 1;
+    }
+  }
+
+  .gl-error-banner {
+    background: var(--gl-red-bg);
+    border-color: var(--gl-red);
+  }
+
+  .gl-notice {
+    background: var(--gl-green-bg);
+    border-color: var(--gl-green);
+  }
+
+  .gl-warning {
+    background: var(--gl-orange-bg);
+    border-color: var(--gl-orange);
+  }
+
+  .gl-review-bar {
+    position: sticky;
+    top: calc(-1 * var(--spacing-double));
+    z-index: 2;
+    background: var(--gl-purple-bg);
+    border-color: var(--gl-purple);
+  }
+
+  .gl-callout {
+    background: var(--gl-bg-subtle);
+
+    > .octicon {
+      width: 20px;
+      height: 20px;
+      fill: var(--gl-green);
+    }
+  }
+
+  .gl-callout-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .gl-tag {
+    margin-left: var(--spacing-half);
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--gl-bg-strong);
+    color: var(--gl-text-muted);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+  }
+
+  .gl-tag-success {
+    background: var(--gl-green-bg);
+    color: var(--gl-green);
+  }
+
+  .gl-tag-pending {
+    background: var(--gl-purple-bg);
+    color: var(--gl-purple);
+    margin-left: 0;
+  }
+
+  .gl-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px;
+    border-radius: 12px;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    .octicon {
+      fill: currentColor;
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  .gl-pill-opened {
+    background: var(--gl-green-bg);
+    color: var(--gl-green);
+  }
+
+  .gl-pill-merged {
+    background: var(--gl-blue-bg);
+    color: var(--gl-blue);
+  }
+
+  .gl-pill-closed,
+  .gl-pill-locked {
+    background: var(--gl-red-bg);
+    color: var(--gl-red);
+  }
+
+  .gl-pill-draft {
+    background: var(--gl-bg-strong);
+    color: var(--gl-text-muted);
+  }
+
+  .gl-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+    color: #fff;
+    font-weight: var(--font-weight-semibold);
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .gl-avatar-small {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+
+  .gl-hue-0 {
+    background: #7759c2;
+  }
+  .gl-hue-1 {
+    background: #1f75cb;
+  }
+  .gl-hue-2 {
+    background: #108548;
+  }
+  .gl-hue-3 {
+    background: #c17d10;
+  }
+  .gl-hue-4 {
+    background: #c91c00;
+  }
+  .gl-hue-5 {
+    background: #0b7c8a;
+  }
+
+  .gl-pipeline {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-half);
+    font-weight: var(--font-weight-semibold);
+
+    .octicon {
+      fill: currentColor;
+    }
+  }
+
+  .gl-pipeline-success {
+    color: var(--gl-green);
+  }
+  .gl-pipeline-failed {
+    color: var(--gl-red);
+  }
+  .gl-pipeline-running,
+  .gl-pipeline-pending,
+  .gl-pipeline-created {
+    color: var(--gl-blue);
+  }
+  .gl-pipeline-canceled,
+  .gl-pipeline-skipped,
+  .gl-pipeline-manual {
+    color: var(--gl-text-muted);
+  }
+
+  .gl-ok {
+    fill: var(--gl-green);
+  }
+
+  .gl-warn {
+    fill: var(--gl-orange);
+  }
+
+  .gl-row-end {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-half);
+  }
+
+  .gl-activity-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing);
+
+    h3 {
+      margin: 0;
+      font-size: var(--font-size-md);
+    }
+  }
+
+  .gl-events {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0 0 0 14px;
+  }
+
+  // A vertical line joins the icons, like GitLab's activity timeline.
+  .gl-event {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 11px;
+      width: 2px;
+      background: var(--gl-border);
+    }
+
+    &:first-child::before {
+      top: 50%;
+    }
+
+    &:last-child::before {
+      bottom: 50%;
+    }
+
+    &:only-child::before {
+      display: none;
+    }
+  }
+
+  .gl-event-icon {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--gl-border);
+    border-radius: 50%;
+    background: var(--gl-bg);
+
+    .octicon {
+      width: 12px;
+      height: 12px;
+      fill: var(--gl-text-muted);
+    }
+  }
+
+  .gl-event-approved .gl-event-icon,
+  .gl-event-resolved .gl-event-icon {
+    border-color: var(--gl-green);
+    background: var(--gl-green-bg);
+
+    .octicon {
+      fill: var(--gl-green);
+    }
+  }
+
+  .gl-event-merged .gl-event-icon {
+    border-color: var(--gl-blue);
+    background: var(--gl-blue-bg);
+
+    .octicon {
+      fill: var(--gl-blue);
+    }
+  }
+
+  .gl-event-unapproved .gl-event-icon,
+  .gl-event-closed .gl-event-icon {
+    border-color: var(--gl-red);
+    background: var(--gl-red-bg);
+
+    .octicon {
+      fill: var(--gl-red);
+    }
+  }
+
+  .gl-event-text {
+    flex: 1;
+    min-width: 0;
+    padding-top: 3px;
+    color: var(--gl-text-muted);
+    overflow-wrap: anywhere;
+
+    strong {
+      color: var(--gl-text);
+    }
+
+    .gl-avatar {
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+  }
+
+  .gl-event-details {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+  }
+
+  .gl-section-title {
+    margin: var(--spacing-double) 0 var(--spacing);
+    padding-bottom: var(--spacing-half);
+    border-bottom: 1px solid var(--gl-border);
+    font-size: var(--font-size-md);
+  }
+
+  .gl-field-label {
+    font-weight: var(--font-weight-semibold);
+  }
+
+  // ---- List ---------------------------------------------------------------
+
+  .gl-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    margin-bottom: var(--spacing);
+
+    .gl-search {
+      flex: 1;
+    }
+  }
+
+  .gl-segmented {
+    display: inline-flex;
+    flex: 1;
+    border-bottom: 1px solid var(--gl-border);
+
+    button {
+      padding: var(--spacing-half) var(--spacing);
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      background: none;
+      color: var(--gl-text-muted);
+      font: inherit;
+      cursor: pointer;
+
+      &:hover {
+        color: var(--gl-text);
+        border-bottom-color: var(--gl-border);
+      }
+
+      &.selected {
+        color: var(--gl-text);
+        font-weight: var(--font-weight-semibold);
+        border-bottom-color: var(--gl-purple);
+      }
+    }
+  }
+
+  .gl-chips {
+    display: inline-flex;
+    gap: var(--spacing-half);
+  }
+
+  .gl-chip {
+    padding: 2px 10px;
+    border: 1px solid var(--gl-border);
+    border-radius: 14px;
+    background: var(--gl-bg);
+    color: var(--gl-text);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--gl-bg-subtle);
+    }
+
+    &.selected {
+      background: var(--gl-blue-bg);
+      border-color: var(--gl-blue);
+      color: var(--gl-blue);
+    }
+  }
+
+  .gl-mr-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--gl-border);
+    border-radius: var(--gl-radius);
+
+    li + li {
+      border-top: 1px solid var(--gl-border);
+    }
+  }
+
+  .gl-mr-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    width: 100%;
+    padding: var(--spacing);
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--gl-bg-subtle);
+    }
+  }
+
+  .gl-mr-item-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .gl-mr-item-title {
+    font-weight: var(--font-weight-semibold);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gl-mr-item-side {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    flex-shrink: 0;
+  }
+
+  .gl-mr-pipeline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 8px 1px 6px;
+    border: 1px solid var(--gl-border);
+    border-radius: 12px;
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+
+    &:has(.gl-pipeline-success) {
+      border-color: var(--gl-green);
+      color: var(--gl-green);
+    }
+
+    &:has(.gl-pipeline-failed) {
+      border-color: var(--gl-red);
+      color: var(--gl-red);
+    }
+
+    &:has(.gl-pipeline-running),
+    &:has(.gl-pipeline-pending) {
+      border-color: var(--gl-blue);
+      color: var(--gl-blue);
+    }
+  }
+
+  .gl-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--gl-text-muted);
+  }
+
+  // ---- Create -------------------------------------------------------------
+
+  .gl-branch-flow {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing);
+    margin-bottom: var(--spacing);
+
+    > .gl-branch,
+    > .octicon {
+      margin-bottom: 6px;
+    }
+
+    .select-component {
+      min-width: 200px;
+    }
+  }
+
+  .gl-create-grid,
+  .gl-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: var(--spacing-double);
+  }
+
+  .gl-create-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing);
+  }
+
+  // ---- Detail -------------------------------------------------------------
+
+  .gl-mr-header {
+    margin-bottom: var(--spacing);
+  }
+
+  .gl-mr-title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    margin-bottom: var(--spacing-half);
+  }
+
+  .gl-mr-title {
+    flex: 1;
+    margin: 0;
+    font-size: 18px;
+    overflow-wrap: anywhere;
+  }
+
+  .gl-mr-edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing);
+    margin-bottom: var(--spacing);
+  }
+
+  .gl-tabs {
+    display: flex;
+    gap: var(--spacing-half);
+    margin-bottom: var(--spacing);
+    border-bottom: 1px solid var(--gl-border);
+  }
+
+  .gl-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: var(--spacing-half) var(--spacing);
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    background: none;
+    color: var(--gl-text-muted);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--gl-text);
+      border-bottom-color: var(--gl-border);
+    }
+
+    &.selected {
+      color: var(--gl-text);
+      font-weight: var(--font-weight-semibold);
+      border-bottom-color: var(--gl-purple);
+    }
+  }
+
+  .gl-tab-count {
+    min-width: 18px;
+    padding: 0 6px;
+    border-radius: 9px;
+    background: var(--gl-bg-strong);
+    font-size: var(--font-size-xs);
+    text-align: center;
+  }
+
+  .gl-description {
+    padding: 14px 16px;
+    border: 1px solid var(--gl-border);
+    border-radius: var(--gl-radius);
+    overflow-wrap: anywhere;
+
+    &.empty {
+      color: var(--gl-text-muted);
+      font-style: italic;
+    }
+  }
+
+  .gl-merge-box {
+    margin-top: var(--spacing);
+    border: 1px solid var(--gl-border);
+    border-left: 4px solid var(--gl-orange);
+    border-radius: var(--gl-radius);
+    background: var(--gl-bg-subtle);
+
+    &.gl-merge-box-ready {
+      border-left-color: var(--gl-green);
+    }
+
+    &.gl-merge-box-merged {
+      border-left-color: var(--gl-blue);
+    }
+
+    &.gl-merge-box-closed {
+      border-left-color: var(--gl-red);
+    }
+  }
+
+  .gl-merge-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    padding: 12px 14px;
+
+    & + .gl-merge-row {
+      border-top: 1px solid var(--gl-border);
+    }
+  }
+
+  .gl-merge-row-text {
+    flex: 1;
+  }
+
+  .gl-merge-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing);
+    padding: var(--spacing);
+    border-top: 1px solid var(--gl-border);
+    background: var(--gl-bg);
+
+    .gl-row-end {
+      flex: 1;
+    }
+  }
+
+  .gl-merge-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-double);
+    padding: var(--spacing-half) var(--spacing);
+    border-top: 1px solid var(--gl-border);
+    font-size: var(--font-size-sm);
+  }
+
+  .gl-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing);
+  }
+
+  .gl-member-picker,
+  .gl-sidebar-section {
+    padding-bottom: var(--spacing);
+    border-bottom: 1px solid var(--gl-border);
+  }
+
+  .gl-member-picker-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-half);
+  }
+
+  .gl-member-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-half);
+  }
+
+  .gl-member-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px 2px 2px;
+    border-radius: 12px;
+    background: var(--gl-bg-strong);
+    font-size: var(--font-size-sm);
+
+    button {
+      display: inline-flex;
+      padding: 0;
+      border: none;
+      background: none;
+      cursor: pointer;
+
+      .octicon {
+        fill: var(--gl-text-muted);
+        width: 12px;
+      }
+    }
+  }
+
+  .gl-member-options {
+    margin-top: var(--spacing-half);
+    padding: var(--spacing-half);
+    border: 1px solid var(--gl-border);
+    border-radius: var(--gl-radius);
+    background: var(--gl-bg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+    ul {
+      list-style: none;
+      margin: var(--spacing-half) 0 0;
+      padding: 0;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    li > button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 4px;
+      border: none;
+      border-radius: var(--gl-radius);
+      background: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+
+      &:hover,
+      &:focus-visible {
+        background: var(--gl-bg-subtle);
+      }
+    }
+
+    .gl-check {
+      display: inline-flex;
+      width: 16px;
+    }
+  }
+
+  .gl-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: var(--spacing-half);
+  }
+
+  .gl-label {
+    padding: 0 8px;
+    border-radius: 10px;
+    background: var(--gl-purple-bg);
+    color: var(--gl-purple);
+    font-size: var(--font-size-sm);
+  }
+
+  // ---- Threads ------------------------------------------------------------
+
+  .gl-thread {
+    margin-bottom: 12px;
+    border: 1px solid var(--gl-border);
+    border-radius: var(--gl-radius);
+    background: var(--gl-bg);
+    overflow: hidden;
+
+    &.resolved {
+      opacity: 0.85;
+    }
+
+    &.gl-thread-inline {
+      margin: var(--spacing-half) 0;
+    }
+  }
+
+  .gl-thread-location {
+    border-bottom: 1px solid var(--gl-border);
+  }
+
+  .gl-thread-file {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-half);
+    padding: 6px var(--spacing);
+    background: var(--gl-bg-subtle);
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
+  }
+
+  .gl-thread-collapsed {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-half);
+
+    > span:first-of-type {
+      flex: 1;
+    }
+    width: 100%;
+    padding: var(--spacing-half) var(--spacing);
+    border: none;
+    background: none;
+    color: var(--gl-text-muted);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    .octicon {
+      fill: var(--gl-green);
+    }
+
+    &:hover {
+      background: var(--gl-bg-subtle);
+    }
+  }
+
+  .gl-note {
+    display: flex;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .gl-note-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .gl-note-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing);
+    min-height: 22px;
+  }
+
+  .button-component.gl-note-reply {
+    border-color: transparent;
+    background: none;
+    color: var(--gl-text-muted);
+    opacity: 0;
+    transition: opacity 0.1s;
+
+    .octicon {
+      fill: currentColor;
+    }
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      border-color: var(--gl-border);
+      color: var(--gl-text);
+    }
+  }
+
+  .gl-note:hover .gl-note-reply,
+  .gl-note-reply:focus-visible {
+    opacity: 1;
+  }
+
+  .gl-note-body {
+    margin-top: 6px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  // Rendered markdown keeps its own spacing.
+  .gl-note-content .gl-note-body,
+  .gl-description {
+    white-space: normal;
+  }
+
+  .gl-markdown .sandboxed-markdown-iframe-container {
+    width: 100%;
+  }
+
+  .gl-thread-replies {
+    background: var(--gl-bg-subtle);
+    border-top: 1px solid var(--gl-border);
+
+    .gl-note + .gl-note {
+      border-top: 1px solid var(--gl-border);
+    }
+  }
+
+  .gl-thread-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    padding: 10px 14px;
+    border-top: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+  }
+
+  .gl-reply-placeholder {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--gl-border);
+    border-radius: var(--gl-radius);
+    background: var(--gl-bg);
+    color: var(--gl-text-muted);
+    font: inherit;
+    text-align: left;
+    cursor: text;
+
+    &:hover {
+      border-color: var(--gl-blue);
+    }
+  }
+
+  .gl-thread-reply {
+    padding: 12px 14px;
+    border-top: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+  }
+
+  .gl-comment-box {
+    margin-top: var(--spacing-double);
+  }
+
+  .gl-thread-reply .gl-comment-box,
+  .gl-diff-comments .gl-comment-box {
+    margin-top: 0;
+  }
+
+  .gl-comment-box-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing);
+    margin-top: var(--spacing);
+  }
+
+  // ---- Markdown editor ----------------------------------------------------
+
+  .gl-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-half);
+  }
+
+  .gl-editor-frame {
+    border: 1px solid var(--gl-border);
+    border-radius: 6px;
+    background: var(--gl-bg);
+    overflow: hidden;
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
+
+  .gl-editor.focused .gl-editor-frame {
+    border-color: var(--gl-blue);
+    box-shadow: 0 0 0 3px var(--gl-blue-bg);
+  }
+
+  .gl-editor.disabled .gl-editor-frame {
+    opacity: 0.7;
+  }
+
+  .gl-editor-header {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 0 var(--spacing-half);
+    border-bottom: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+  }
+
+  .gl-editor-tabs {
+    display: flex;
+
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      background: none;
+      color: var(--gl-text-muted);
+      font: inherit;
+      cursor: pointer;
+
+      &:hover {
+        color: var(--gl-text);
+      }
+
+      &.selected {
+        color: var(--gl-text);
+        font-weight: var(--font-weight-semibold);
+        border-bottom-color: var(--gl-purple);
+      }
+    }
+  }
+
+  .gl-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .gl-editor-toolbar-group {
+    display: flex;
+    gap: 2px;
+
+    & + .gl-editor-toolbar-group {
+      margin-left: 4px;
+      padding-left: 4px;
+      border-left: 1px solid var(--gl-border);
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 26px;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+
+      .octicon {
+        fill: var(--gl-text-muted);
+      }
+
+      &:hover:not(:disabled) {
+        background: var(--gl-bg-strong);
+
+        .octicon {
+          fill: var(--gl-text);
+        }
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+    }
+  }
+
+  .gl-editor-input {
+    display: block;
+    width: 100%;
+    min-height: 64px;
+    max-height: 420px;
+    padding: 12px 14px;
+    border: none;
+    outline: none;
+    resize: none;
+    background-color: var(--gl-bg);
+    color: var(--gl-text);
+    caret-color: var(--gl-text);
+    font-family: var(--font-family-sans-serif);
+    font-size: 13px;
+    line-height: 1.6;
+
+    &::placeholder {
+      color: var(--gl-text-muted);
+    }
+
+    &:focus {
+      box-shadow: none;
+      border: none;
+    }
+  }
+
+  .gl-editor-preview {
+    min-height: 64px;
+    padding: 12px 14px;
+  }
+
+  .gl-editor-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-top: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+    color: var(--gl-text-muted);
+    font-size: var(--font-size-xs);
+
+    .octicon {
+      fill: var(--gl-text-muted);
+      width: 14px;
+    }
+  }
+
+  .gl-hint {
+    flex: 1;
+    color: var(--gl-text-muted);
+    font-size: var(--font-size-xs);
+  }
+
+  .gl-draft {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    margin: var(--spacing-half) 0;
+    padding: 10px 14px;
+    border: 1px dashed var(--gl-purple);
+    border-radius: var(--gl-radius);
+    background: var(--gl-purple-bg);
+
+    .gl-note-body {
+      flex: 1;
+      margin: 0;
+    }
+  }
+
+  // ---- Diff ---------------------------------------------------------------
+
+  .gl-changes-summary {
+    margin-bottom: var(--spacing);
+  }
+
+  .gl-file {
+    margin-bottom: var(--spacing);
+    border: 1px solid var(--gl-border);
+    border-radius: var(--gl-radius);
+    overflow: hidden;
+  }
+
+  .gl-file-header {
+    position: sticky;
+    top: calc(-1 * var(--spacing-double));
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-half);
+    width: 100%;
+    padding: var(--spacing-half) var(--spacing);
+    border: none;
+    border-bottom: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .gl-file-name {
+    flex: 1;
+    font-family: var(--font-family-monospace);
+    font-weight: var(--font-weight-semibold);
+    overflow-wrap: anywhere;
+  }
+
+  .gl-file-empty {
+    padding: var(--spacing);
+  }
+
+  .gl-diffstat {
+    display: inline-flex;
+    gap: 6px;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+  }
+
+  .gl-diffstat-add {
+    color: var(--gl-green);
+  }
+
+  .gl-diffstat-del {
+    color: var(--gl-red);
+  }
+
+  .gl-diff {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+    line-height: 20px;
+
+    td {
+      padding: 0 var(--spacing-half);
+      vertical-align: top;
+    }
+  }
+
+  .gl-diff-num {
+    position: relative;
+    width: 44px;
+    min-width: 44px;
+    color: var(--gl-text-muted);
+    text-align: right;
+    user-select: none;
+    border-right: 1px solid var(--gl-border);
+  }
+
+  .gl-diff-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .gl-diff-marker {
+    display: inline-block;
+    width: 14px;
+    color: var(--gl-text-muted);
+    user-select: none;
+  }
+
+  .gl-diff-hunk td {
+    padding: 2px var(--spacing);
+    background: var(--gl-blue-bg);
+    color: var(--gl-text-muted);
+  }
+
+  .gl-diff-add {
+    background: var(--gl-diff-add);
+
+    .gl-diff-num {
+      background: var(--gl-diff-add-num);
+    }
+  }
+
+  .gl-diff-delete {
+    background: var(--gl-diff-del);
+
+    .gl-diff-num {
+      background: var(--gl-diff-del-num);
+    }
+  }
+
+  .gl-diff tr.commented .gl-diff-text,
+  .gl-diff tr.focused .gl-diff-text {
+    box-shadow: inset 3px 0 0 var(--gl-brand);
+  }
+
+  .gl-diff tr.focused {
+    outline: 1px solid var(--gl-brand);
+  }
+
+  .gl-add-comment {
+    position: absolute;
+    top: 2px;
+    left: -4px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    border-radius: 3px;
+    background: var(--gl-blue);
+    cursor: pointer;
+
+    .octicon {
+      fill: #fff;
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  .gl-diff tr:hover .gl-add-comment,
+  .gl-add-comment:focus-visible {
+    display: inline-flex;
+  }
+
+  .gl-diff-comments > td {
+    padding: 10px 14px;
+    background: var(--gl-bg-subtle);
+    border-top: 1px solid var(--gl-border);
+    border-bottom: 1px solid var(--gl-border);
+    font-family: var(--font-family-sans-serif);
+    font-size: var(--font-size);
+    line-height: normal;
+  }
+
+  .gl-diff-excerpt {
+    border-top: none;
+  }
+
+  // ---- Commits ------------------------------------------------------------
+
+  .gl-commits {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--gl-border);
+    border-radius: var(--gl-radius);
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing);
+      padding: var(--spacing);
+
+      & + li {
+        border-top: 1px solid var(--gl-border);
+      }
+    }
+  }
+
+  .gl-commit-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gl-sha {
+    padding: 0 6px;
+    border-radius: var(--gl-radius);
+    background: var(--gl-bg-strong);
+  }
+}
+
+@keyframes gl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ---- Pipelines tab --------------------------------------------------------
+
+#gitlab-merge-requests {
+  .gl-ci-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+
+    .octicon {
+      fill: currentColor;
+    }
+  }
+
+  .gl-pipeline-preparing,
+  .gl-pipeline-waiting_for_resource,
+  .gl-pipeline-scheduled {
+    color: var(--gl-blue);
+  }
+
+  .gl-pipeline-canceling {
+    color: var(--gl-text-muted);
+  }
+
+  .gl-pipeline-running .octicon {
+    animation: gl-spin 2s linear infinite;
+  }
+
+  .gl-pipeline-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    margin-bottom: var(--spacing-double);
+    padding: 12px 14px;
+    border: 1px solid var(--gl-border);
+    border-radius: 6px;
+    background: var(--gl-bg-subtle);
+
+    > .gl-ci-icon .octicon {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  .gl-pipeline-title {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .gl-pipeline-select {
+    align-self: flex-start;
+    padding: 2px 6px;
+    border: 1px solid var(--gl-border);
+    border-radius: 4px;
+    background: var(--gl-bg);
+    color: var(--gl-text);
+    font: inherit;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .gl-stages {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    padding-bottom: var(--spacing);
+    overflow-x: auto;
+  }
+
+  .gl-stage {
+    flex: 0 0 200px;
+  }
+
+  // The line between stages, like GitLab's pipeline graph.
+  .gl-stage-link {
+    flex: 0 0 24px;
+    align-self: stretch;
+    margin-top: 44px;
+    height: 2px;
+    background: var(--gl-border);
+  }
+
+  .gl-stage-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: var(--spacing);
+    font-weight: var(--font-weight-semibold);
+    text-transform: capitalize;
+  }
+
+  .gl-jobs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .gl-job {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--gl-border);
+    border-radius: 16px;
+    background: var(--gl-bg);
+    overflow: hidden;
+
+    &:hover {
+      border-color: var(--gl-text-muted);
+    }
+
+    &.selected {
+      border-color: var(--gl-blue);
+      box-shadow: 0 0 0 2px var(--gl-blue-bg);
+    }
+  }
+
+  .gl-job-main {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 6px 10px;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    .gl-tag {
+      margin-left: 0;
+    }
+  }
+
+  .gl-job-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gl-job-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    border: none;
+    border-left: 1px solid var(--gl-border);
+    background: none;
+    cursor: pointer;
+
+    .octicon {
+      fill: var(--gl-text-muted);
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--gl-bg-strong);
+
+      .octicon {
+        fill: var(--gl-text);
+      }
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+  }
+
+  .gl-pipeline-hint {
+    margin-top: var(--spacing);
+  }
+
+  .gl-job-log {
+    margin-top: var(--spacing);
+    border: 1px solid var(--gl-border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .gl-job-log-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+  }
+
+  .gl-job-log-empty {
+    padding: var(--spacing);
+  }
+
+  // Job logs are terminal output, dark in both themes like on GitLab.
+  .gl-job-log-text {
+    max-height: 360px;
+    margin: 0;
+    padding: 12px 14px;
+    overflow: auto;
+    background: #1f1e24;
+    color: #ececef;
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+
+    .gl-meta {
+      color: #a4a3a8;
+    }
+  }
+}
