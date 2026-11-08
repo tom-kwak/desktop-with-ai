@@ -699,7 +699,7 @@ body.theme-dark .gitlab-ui {
   }
 
   .gl-description {
-    padding: var(--spacing);
+    padding: 14px 16px;
     border: 1px solid var(--gl-border);
     border-radius: var(--gl-radius);
     overflow-wrap: anywhere;
@@ -734,7 +734,7 @@ body.theme-dark .gitlab-ui {
     display: flex;
     align-items: center;
     gap: var(--spacing);
-    padding: var(--spacing);
+    padding: 12px 14px;
 
     & + .gl-merge-row {
       border-top: 1px solid var(--gl-border);
@@ -875,7 +875,7 @@ body.theme-dark .gitlab-ui {
   // ---- Threads ------------------------------------------------------------
 
   .gl-thread {
-    margin-bottom: var(--spacing);
+    margin-bottom: 12px;
     border: 1px solid var(--gl-border);
     border-radius: var(--gl-radius);
     background: var(--gl-bg);
@@ -929,8 +929,8 @@ body.theme-dark .gitlab-ui {
 
   .gl-note {
     display: flex;
-    gap: var(--spacing);
-    padding: var(--spacing);
+    gap: 12px;
+    padding: 12px 14px;
   }
 
   .gl-note-content {
@@ -938,8 +938,39 @@ body.theme-dark .gitlab-ui {
     min-width: 0;
   }
 
+  .gl-note-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing);
+    min-height: 22px;
+  }
+
+  .button-component.gl-note-reply {
+    border-color: transparent;
+    background: none;
+    color: var(--gl-text-muted);
+    opacity: 0;
+    transition: opacity 0.1s;
+
+    .octicon {
+      fill: currentColor;
+    }
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      border-color: var(--gl-border);
+      color: var(--gl-text);
+    }
+  }
+
+  .gl-note:hover .gl-note-reply,
+  .gl-note-reply:focus-visible {
+    opacity: 1;
+  }
+
   .gl-note-body {
-    margin-top: 2px;
+    margin-top: 6px;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
@@ -967,7 +998,7 @@ body.theme-dark .gitlab-ui {
     display: flex;
     align-items: center;
     gap: var(--spacing);
-    padding: var(--spacing-half) var(--spacing);
+    padding: 10px 14px;
     border-top: 1px solid var(--gl-border);
     background: var(--gl-bg-subtle);
   }
@@ -977,7 +1008,7 @@ body.theme-dark .gitlab-ui {
     align-items: center;
     gap: 6px;
     flex: 1;
-    padding: 4px var(--spacing-half);
+    padding: 7px 10px;
     border: 1px solid var(--gl-border);
     border-radius: var(--gl-radius);
     background: var(--gl-bg);
@@ -992,18 +1023,13 @@ body.theme-dark .gitlab-ui {
   }
 
   .gl-thread-reply {
-    padding: var(--spacing);
+    padding: 12px 14px;
     border-top: 1px solid var(--gl-border);
     background: var(--gl-bg-subtle);
   }
 
   .gl-comment-box {
-    margin-top: var(--spacing);
-
-    textarea {
-      width: 100%;
-      resize: vertical;
-    }
+    margin-top: var(--spacing-double);
   }
 
   .gl-thread-reply .gl-comment-box,
@@ -1015,8 +1041,161 @@ body.theme-dark .gitlab-ui {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    gap: var(--spacing);
+    margin-top: var(--spacing);
+  }
+
+  // ---- Markdown editor ----------------------------------------------------
+
+  .gl-editor {
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-half);
-    margin-top: var(--spacing-half);
+  }
+
+  .gl-editor-frame {
+    border: 1px solid var(--gl-border);
+    border-radius: 6px;
+    background: var(--gl-bg);
+    overflow: hidden;
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
+
+  .gl-editor.focused .gl-editor-frame {
+    border-color: var(--gl-blue);
+    box-shadow: 0 0 0 3px var(--gl-blue-bg);
+  }
+
+  .gl-editor.disabled .gl-editor-frame {
+    opacity: 0.7;
+  }
+
+  .gl-editor-header {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 0 var(--spacing-half);
+    border-bottom: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+  }
+
+  .gl-editor-tabs {
+    display: flex;
+
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      background: none;
+      color: var(--gl-text-muted);
+      font: inherit;
+      cursor: pointer;
+
+      &:hover {
+        color: var(--gl-text);
+      }
+
+      &.selected {
+        color: var(--gl-text);
+        font-weight: var(--font-weight-semibold);
+        border-bottom-color: var(--gl-purple);
+      }
+    }
+  }
+
+  .gl-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .gl-editor-toolbar-group {
+    display: flex;
+    gap: 2px;
+
+    & + .gl-editor-toolbar-group {
+      margin-left: 4px;
+      padding-left: 4px;
+      border-left: 1px solid var(--gl-border);
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 26px;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+
+      .octicon {
+        fill: var(--gl-text-muted);
+      }
+
+      &:hover:not(:disabled) {
+        background: var(--gl-bg-strong);
+
+        .octicon {
+          fill: var(--gl-text);
+        }
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+    }
+  }
+
+  .gl-editor-input {
+    display: block;
+    width: 100%;
+    min-height: 64px;
+    max-height: 420px;
+    padding: 12px 14px;
+    border: none;
+    outline: none;
+    resize: none;
+    background: var(--gl-bg);
+    color: var(--gl-text);
+    font-family: var(--font-family-sans-serif);
+    font-size: 13px;
+    line-height: 1.6;
+
+    &::placeholder {
+      color: var(--gl-text-muted);
+    }
+
+    &:focus {
+      box-shadow: none;
+      border: none;
+    }
+  }
+
+  .gl-editor-preview {
+    min-height: 64px;
+    padding: 12px 14px;
+  }
+
+  .gl-editor-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-top: 1px solid var(--gl-border);
+    background: var(--gl-bg-subtle);
+    color: var(--gl-text-muted);
+    font-size: var(--font-size-xs);
+
+    .octicon {
+      fill: var(--gl-text-muted);
+      width: 14px;
+    }
   }
 
   .gl-hint {
@@ -1030,7 +1209,7 @@ body.theme-dark .gitlab-ui {
     align-items: center;
     gap: var(--spacing);
     margin: var(--spacing-half) 0;
-    padding: var(--spacing-half) var(--spacing);
+    padding: 10px 14px;
     border: 1px dashed var(--gl-purple);
     border-radius: var(--gl-radius);
     background: var(--gl-purple-bg);
@@ -1192,7 +1371,7 @@ body.theme-dark .gitlab-ui {
   }
 
   .gl-diff-comments > td {
-    padding: var(--spacing-half) var(--spacing);
+    padding: 10px 14px;
     background: var(--gl-bg-subtle);
     border-top: 1px solid var(--gl-border);
     border-bottom: 1px solid var(--gl-border);

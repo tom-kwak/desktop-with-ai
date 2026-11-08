@@ -3,7 +3,7 @@ import classNames from 'classnames'
 import { Octicon } from '../octicons'
 import * as octicons from '../octicons/octicons.generated'
 import { Button } from '../lib/button'
-import { TextArea } from '../lib/text-area'
+import { GitLabMarkdownEditor } from './gitlab-markdown-editor'
 import { Repository } from '../../models/repository'
 import { IGitLabAccount } from '../../lib/gitlab/gitlab-accounts-store'
 import {
@@ -109,9 +109,6 @@ export function PipelineStatus(props: { readonly pipeline: IGitLabPipeline }) {
   )
 }
 
-const isSubmitShortcut = (event: React.KeyboardEvent) =>
-  event.key === 'Enter' && (event.metaKey || event.ctrlKey)
-
 interface ICommentBoxProps {
   readonly placeholder: string
   readonly submitLabel: string
@@ -130,8 +127,8 @@ interface ICommentBoxState {
 }
 
 /**
- * A text box for comments. ⌘/Ctrl+Enter posts, Escape cancels, and the
- * text is only cleared once posting succeeded.
+ * A markdown comment editor with its buttons. ⌘/Ctrl+Enter posts, Escape
+ * cancels, and the text is only cleared once posting succeeded.
  */
 export class CommentBox extends React.Component<
   ICommentBoxProps,
@@ -145,31 +142,24 @@ export class CommentBox extends React.Component<
     const empty = this.state.text.trim().length === 0
     return (
       <div className="gl-comment-box">
-        <TextArea
-          ariaLabel={placeholder}
+        <GitLabMarkdownEditor
           placeholder={placeholder}
           value={this.state.text}
-          onValueChanged={this.onChanged}
-          onKeyDown={this.onKeyDown}
-          rows={this.props.rows ?? 3}
+          onChange={this.onChanged}
+          onSubmitShortcut={this.onSubmit}
+          onCancelShortcut={onCancel}
+          minRows={this.props.rows ?? 3}
           disabled={busy}
           autoFocus={this.props.autoFocus}
         />
         <div className="gl-comment-box-actions">
-          <span className="gl-hint">
-            {__DARWIN__ ? '⌘' : 'Ctrl'}+Enter to {submitLabel.toLowerCase()}
-          </span>
           {onCancel !== undefined && (
-            <Button onClick={onCancel} disabled={busy} size="small">
+            <Button onClick={onCancel} disabled={busy}>
               Cancel
             </Button>
           )}
           {secondaryLabel !== undefined && (
-            <Button
-              onClick={this.onSecondary}
-              disabled={busy || empty}
-              size="small"
-            >
+            <Button onClick={this.onSecondary} disabled={busy || empty}>
               {secondaryLabel}
             </Button>
           )}
@@ -177,7 +167,7 @@ export class CommentBox extends React.Component<
             className="gl-primary"
             onClick={this.onSubmit}
             disabled={busy || empty}
-            size="small"
+            tooltip={`${__DARWIN__ ? '⌘' : 'Ctrl+'}Enter`}
           >
             {submitLabel}
           </Button>
@@ -187,17 +177,6 @@ export class CommentBox extends React.Component<
   }
 
   private onChanged = (text: string) => this.setState({ text })
-
-  private onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isSubmitShortcut(event)) {
-      event.preventDefault()
-      this.onSubmit()
-    } else if (event.key === 'Escape' && this.props.onCancel !== undefined) {
-      event.preventDefault()
-      event.stopPropagation()
-      this.props.onCancel()
-    }
-  }
 
   private onSubmit = () => this.send(this.props.onSubmit)
 

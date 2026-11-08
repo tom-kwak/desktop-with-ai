@@ -2,7 +2,8 @@ import * as React from 'react'
 import { Octicon } from '../octicons'
 import * as octicons from '../octicons/octicons.generated'
 import { TextBox } from '../lib/text-box'
-import { TextArea } from '../lib/text-area'
+import { GitLabMarkdownEditor } from './gitlab-markdown-editor'
+import { GitLabMarkdownContext } from './gitlab-markdown'
 import { Select } from '../lib/select'
 import { Checkbox, CheckboxValue } from '../lib/checkbox'
 import { git } from '../../lib/git/core'
@@ -218,71 +219,79 @@ export class GitLabMRCreate extends React.Component<
     }
     const notPushed = branches !== null && !branches.includes(sourceBranch)
 
+    const links = {
+      projectURL: this.props.context.project.webURL,
+      serverURL: this.props.context.connection.serverURL,
+    }
+
     return (
-      <div className="gl-mr-create">
-        {error !== null && (
-          <ErrorBanner message={error} onDismiss={this.dismissError} />
-        )}
-        <div className="gl-branch-flow">
-          <code className="gl-branch">{sourceBranch}</code>
-          <Octicon symbol={octicons.arrowRight} />
-          <Select
-            label="Into"
-            value={targetBranch}
-            onChange={this.onTargetChanged}
-            disabled={busy}
-          >
-            {targets.map(b => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </Select>
-        </div>
-        {notPushed && (
-          <div className="gl-warning" role="status">
-            <Octicon symbol={octicons.alert} />
-            <span>
-              GitLab doesn't have <code>{sourceBranch}</code> yet. Push the
-              branch first, then create the merge request.
-            </span>
+      <GitLabMarkdownContext.Provider value={links}>
+        <div className="gl-mr-create">
+          {error !== null && (
+            <ErrorBanner message={error} onDismiss={this.dismissError} />
+          )}
+          <div className="gl-branch-flow">
+            <code className="gl-branch">{sourceBranch}</code>
+            <Octicon symbol={octicons.arrowRight} />
+            <Select
+              label="Into"
+              value={targetBranch}
+              onChange={this.onTargetChanged}
+              disabled={busy}
+            >
+              {targets.map(b => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </Select>
           </div>
-        )}
-        <div className="gl-create-grid">
-          <div className="gl-create-main">
-            <TextBox
-              label="Title"
-              value={title}
-              onValueChanged={this.onTitleChanged}
-              disabled={busy}
-              autoFocus={true}
-            />
-            <TextArea
-              label="Description"
-              value={description}
-              onValueChanged={this.onDescriptionChanged}
-              rows={8}
-              disabled={busy}
-              placeholder="What does this change and why?"
-            />
-            <Checkbox
-              label="Mark as draft (can't be merged until marked ready)"
-              value={draft ? CheckboxValue.On : CheckboxValue.Off}
-              onChange={this.onDraftChanged}
-              disabled={busy}
-            />
+          {notPushed && (
+            <div className="gl-warning" role="status">
+              <Octicon symbol={octicons.alert} />
+              <span>
+                GitLab doesn't have <code>{sourceBranch}</code> yet. Push the
+                branch first, then create the merge request.
+              </span>
+            </div>
+          )}
+          <div className="gl-create-grid">
+            <div className="gl-create-main">
+              <TextBox
+                label="Title"
+                value={title}
+                onValueChanged={this.onTitleChanged}
+                disabled={busy}
+                autoFocus={true}
+              />
+              <GitLabMarkdownEditor
+                label="Description"
+                placeholder="Describe the goal of the changes and what reviewers should be aware of."
+                value={description}
+                onChange={this.onDescriptionChanged}
+                minRows={8}
+                disabled={busy}
+                onSubmitShortcut={this.submit}
+              />
+              <Checkbox
+                label="Mark as draft (can't be merged until marked ready)"
+                value={draft ? CheckboxValue.On : CheckboxValue.Off}
+                onChange={this.onDraftChanged}
+                disabled={busy}
+              />
+            </div>
+            <aside className="gl-sidebar">
+              <GitLabMemberPicker
+                label="Reviewers"
+                members={members}
+                selected={reviewers}
+                onChange={this.onReviewersChanged}
+                disabled={busy}
+              />
+            </aside>
           </div>
-          <aside className="gl-sidebar">
-            <GitLabMemberPicker
-              label="Reviewers"
-              members={members}
-              selected={reviewers}
-              onChange={this.onReviewersChanged}
-              disabled={busy}
-            />
-          </aside>
         </div>
-      </div>
+      </GitLabMarkdownContext.Provider>
     )
   }
 }

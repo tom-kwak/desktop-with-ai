@@ -4,7 +4,6 @@ import { Octicon } from '../octicons'
 import * as octicons from '../octicons/octicons.generated'
 import { Button } from '../lib/button'
 import { TextBox } from '../lib/text-box'
-import { TextArea } from '../lib/text-area'
 import { Checkbox, CheckboxValue } from '../lib/checkbox'
 import { Loading } from '../lib/loading'
 import { RelativeTime } from '../relative-time'
@@ -57,6 +56,7 @@ import { GitLabMRThread } from './gitlab-mr-thread'
 import { GitLabMRChanges } from './gitlab-mr-changes'
 import { GitLabMemberPicker } from './gitlab-member-picker'
 import { GitLabMarkdown, GitLabMarkdownContext } from './gitlab-markdown'
+import { GitLabMarkdownEditor } from './gitlab-markdown-editor'
 
 type Tab = 'overview' | 'changes' | 'commits'
 
@@ -723,11 +723,15 @@ export class GitLabMRDetail extends React.Component<
         <div className="gl-overview-main">
           {editing !== null ? (
             <div className="gl-mr-edit">
-              <TextArea
+              <GitLabMarkdownEditor
                 label="Description"
+                placeholder="Describe the goal of the changes and what reviewers should be aware of."
                 value={editing.description}
-                onValueChanged={this.onEditDescription}
-                rows={8}
+                onChange={this.onEditDescription}
+                minRows={8}
+                disabled={busy}
+                onSubmitShortcut={this.saveEditing}
+                onCancelShortcut={this.cancelEditing}
               />
               <div className="gl-row-end">
                 <Button

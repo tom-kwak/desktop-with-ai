@@ -18,8 +18,25 @@ const NoEmoji = new Map<string, Emoji>()
 
 /** Sized for comments in a dialog rather than a full page. */
 const CommentCSS = `
-  body { background: transparent; }
-  .markdown-body { font-size: 12px; }
+  html, body, .markdown-body {
+    background-color: transparent;
+    margin: 0;
+    padding: 0;
+  }
+  .markdown-body { font-size: 13px; line-height: 1.6; }
+  .markdown-body p, .markdown-body ul, .markdown-body ol,
+  .markdown-body blockquote, .markdown-body table {
+    margin-top: 0;
+    margin-bottom: 0.6em;
+  }
+  .markdown-body pre {
+    margin: 0.4em 0 0.6em;
+    padding: 10px 12px;
+    border-radius: 4px;
+  }
+  .markdown-body blockquote {
+    padding: 0 0.8em;
+  }
   .markdown-body > :first-child { margin-top: 0; }
   .markdown-body > :last-child { margin-bottom: 0; }
   .markdown-body h1, .markdown-body h2 {

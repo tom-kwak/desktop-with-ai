@@ -106,10 +106,10 @@ export class GitLabMRThread extends React.Component<
           </button>
         ) : (
           <>
-            {this.renderNote(first)}
+            {this.renderNote(first, !resolvable)}
             {replies.length > 0 && (
               <div className="gl-thread-replies">
-                {replies.map(n => this.renderNote(n))}
+                {replies.map(n => this.renderNote(n, false))}
               </div>
             )}
             {this.renderActions(resolvable)}
@@ -148,19 +148,36 @@ export class GitLabMRThread extends React.Component<
     )
   }
 
-  private renderNote(note: IGitLabNote) {
+  /**
+   * @param replyInHeader Single comments get a small Reply button next to
+   *                      the author instead of a reply bar below.
+   */
+  private renderNote(note: IGitLabNote, replyInHeader: boolean) {
     return (
       <div key={note.id} className="gl-note">
         {note.author !== null && <UserAvatar user={note.author} />}
         <div className="gl-note-content">
-          <div className="gl-meta">
-            <strong>{note.author?.name ?? 'Someone'}</strong>
-            {note.author !== null && ` @${note.author.username}`}
-            {note.createdAt !== '' && (
-              <>
-                {' · '}
-                <RelativeTime date={new Date(note.createdAt)} />
-              </>
+          <div className="gl-note-header">
+            <span className="gl-meta">
+              <strong>{note.author?.name ?? 'Someone'}</strong>
+              {note.author !== null && ` @${note.author.username}`}
+              {note.createdAt !== '' && (
+                <>
+                  {' · '}
+                  <RelativeTime date={new Date(note.createdAt)} />
+                </>
+              )}
+            </span>
+            {replyInHeader && !this.state.replying && (
+              <Button
+                size="small"
+                className="gl-note-reply"
+                onClick={this.startReply}
+                disabled={this.props.busy}
+                ariaLabel="Reply to this comment"
+              >
+                <Octicon symbol={octicons.reply} /> Reply
+              </Button>
             )}
           </div>
           <div className="gl-note-body">
@@ -176,6 +193,9 @@ export class GitLabMRThread extends React.Component<
 
   private renderActions(resolvable: boolean) {
     const { busy, discussion } = this.props
+    if (!resolvable && !this.state.replying) {
+      return null
+    }
     if (this.state.replying) {
       return (
         <div className="gl-thread-reply">
