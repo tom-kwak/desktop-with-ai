@@ -45,6 +45,7 @@ import { TitleBar, ZoomInfo, FullScreenInfo } from './window'
 
 import { RepositoriesList } from './repositories-list'
 import { RepositoryView } from './repository'
+import { GitLabMergeRequestsToolbarButton } from './gitlab/gitlab-merge-requests-toolbar-button'
 import { RenameBranch } from './rename-branch'
 import { DeleteBranch, DeleteRemoteBranch } from './delete-branch'
 import { CloningRepositoryView } from './cloning-repository'
@@ -3944,7 +3945,24 @@ export class App extends React.Component<IAppProps, IAppState> {
         {this.renderWorktreeToolbarButton()}
         {this.renderBranchToolbarButton()}
         {this.renderPushPullToolbarButton()}
+        {this.renderGitLabMergeRequestsToolbarButton()}
       </Toolbar>
+    )
+  }
+
+  /** Shown only for repositories hosted on a signed-in GitLab server. */
+  private renderGitLabMergeRequestsToolbarButton() {
+    const selection = this.state.selectedState
+    if (!selection || selection.type !== SelectionType.Repository) {
+      return null
+    }
+
+    const tip = selection.state.branchesState.tip
+    return (
+      <GitLabMergeRequestsToolbarButton
+        repository={selection.repository}
+        branchName={tip.kind === TipState.Valid ? tip.branch.name : null}
+      />
     )
   }
 

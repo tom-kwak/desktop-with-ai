@@ -30,6 +30,11 @@ import { trampolineUIHelper as ui } from './trampoline-ui-helper'
 import { getAPIEndpoint, isGitHubHost } from '../api'
 import { isDotCom, isGHE, isGist } from '../endpoint-capabilities'
 import { AccountRequiresSignInError } from '../credential-sessions'
+import {
+  getGitLabGitCredential,
+  isGitLabAccountURL,
+} from '../gitlab/gitlab-credentials'
+import { getGitLabCredentialSource } from '../gitlab/gitlab-accounts'
 
 type Credential = Map<string, string>
 type Store = AccountsStore
@@ -117,6 +122,17 @@ async function getCredential(cred: Credential, store: Store, token: string) {
     return ghCred
   }
 
+  const glCred = await getGitLabGitCredential(
+    getCredentialUrl(cred),
+    getGitLabCredentialSource()
+  )
+  if (glCred) {
+    info(`found GitLab credential for ${getCredentialUrl(cred).origin}`)
+    return new Map(cred)
+      .set('username', glCred.username)
+      .set('password', glCred.password)
+  }
+
   const endpointKind = await getEndpointKind(cred, store)
   const accounts = await store.getAll()
 
@@ -199,6 +215,10 @@ const getEndpointKind = async (cred: Credential, store: Store) => {
 
 /** Implementation of the 'store' git credential helper command */
 async function storeCredential(cred: Credential, store: Store, token: string) {
+  // GitLab tokens live with the GitLab account; don't copy them elsewhere.
+  if (isGitLabAccountURL(getCredentialUrl(cred), getGitLabCredentialSource())) {
+    return
+  }
   if ((await getEndpointKind(cred, store)) !== 'generic') {
     return
   }
@@ -219,6 +239,9 @@ const storeExternalCredential = (cred: Credential, token: string) => {
 
 /** Implementation of the 'erase' git credential helper command */
 async function eraseCredential(cred: Credential, store: Store, token: string) {
+  if (isGitLabAccountURL(getCredentialUrl(cred), getGitLabCredentialSource())) {
+    return
+  }
   if ((await getEndpointKind(cred, store)) !== 'generic') {
     return
   }
