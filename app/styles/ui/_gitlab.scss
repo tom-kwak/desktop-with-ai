@@ -170,6 +170,10 @@ body.theme-dark .gitlab-ui {
     vertical-align: text-bottom;
   }
 
+  .gl-spinning .octicon {
+    animation: gl-spin 1s linear infinite;
+  }
+
   .gl-link-button {
     padding: 0;
     border: none;
@@ -1571,5 +1575,11 @@ body.theme-dark .gitlab-ui {
     padding: 0 6px;
     border-radius: var(--gl-radius);
     background: var(--gl-bg-strong);
+  }
+}
+
+@keyframes gl-spin {
+  to {
+    transform: rotate(360deg);
   }
 }

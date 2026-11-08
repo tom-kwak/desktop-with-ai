@@ -62,6 +62,15 @@ import { GitLabMREvents } from './gitlab-mr-events'
 
 type Tab = 'overview' | 'changes' | 'commits'
 
+/** How often to refresh while the merge request is open. */
+const PollInterval = 30 * 1000
+
+/**
+ * GitLab records some events (like approvals) a moment after the action
+ * returns, so refresh once more shortly after.
+ */
+const FollowUpDelay = 1500
+
 /** GitLab's activity filter: everything, comments only, or history only. */
 type ActivityFilter = 'all' | 'comments' | 'history'
 
@@ -97,6 +106,7 @@ interface IGitLabMRDetailState {
   readonly activityFilter: ActivityFilter
   readonly focus: IGitLabNotePosition | null
   readonly busy: boolean
+  readonly refreshing: boolean
   readonly actionError: string | null
   readonly notice: string | null
 
@@ -112,6 +122,8 @@ export class GitLabMRDetail extends React.Component<
   IGitLabMRDetailState
 > {
   private mounted = false
+  private pollTimer: number | undefined = undefined
+  private followUpTimer: number | undefined = undefined
   private markdownLinks = {
     projectURL: this.props.context.project.webURL,
     serverURL: this.props.context.connection.serverURL,
@@ -132,6 +144,7 @@ export class GitLabMRDetail extends React.Component<
       activityFilter: 'all',
       focus: null,
       busy: false,
+      refreshing: false,
       actionError: null,
       notice: null,
       editing: null,
@@ -144,10 +157,14 @@ export class GitLabMRDetail extends React.Component<
   public componentDidMount() {
     this.mounted = true
     this.load()
+    // Pick up what others do on GitLab while the window is open.
+    this.pollTimer = window.setInterval(this.onPoll, PollInterval)
   }
 
   public componentWillUnmount() {
     this.mounted = false
+    window.clearInterval(this.pollTimer)
+    window.clearTimeout(this.followUpTimer)
   }
 
   private get api() {
@@ -208,8 +225,14 @@ export class GitLabMRDetail extends React.Component<
         }
       }
     } catch (e) {
-      if (this.mounted) {
+      if (!this.mounted) {
+        return
+      }
+      if (this.state.details === null) {
         this.setState({ loadError: errorMessage(e) })
+      } else {
+        // A failed refresh keeps what's shown.
+        log.warn('[GitLab] could not refresh the merge request', e)
       }
     }
   }
@@ -238,8 +261,13 @@ export class GitLabMRDetail extends React.Component<
         this.setState({ discussions })
       }
     } catch (e) {
-      if (this.mounted) {
+      if (!this.mounted) {
+        return
+      }
+      if (this.state.discussions === null) {
         this.setState({ discussions: [], actionError: errorMessage(e) })
+      } else {
+        log.warn('[GitLab] could not refresh the activity', e)
       }
     }
   }
@@ -283,6 +311,7 @@ export class GitLabMRDetail extends React.Component<
       await action()
       if (this.mounted) {
         this.setState({ busy: false, notice: notice ?? null })
+        this.refreshAfterAction()
       }
       return true
     } catch (e) {
@@ -292,6 +321,38 @@ export class GitLabMRDetail extends React.Component<
       return false
     }
   }
+
+  /** Reload everything that an action or someone else may have changed. */
+  private async refresh() {
+    if (!this.mounted) {
+      return
+    }
+    this.setState({ refreshing: true })
+    await Promise.all([
+      this.loadDetails(),
+      this.loadApprovals(),
+      this.loadDiscussions(),
+      this.loadDrafts(),
+    ])
+    if (this.mounted) {
+      this.setState({ refreshing: false })
+    }
+  }
+
+  private refreshAfterAction() {
+    this.refresh()
+    window.clearTimeout(this.followUpTimer)
+    this.followUpTimer = window.setTimeout(() => this.refresh(), FollowUpDelay)
+  }
+
+  private onPoll = () => {
+    // Don't swap content under someone who's acting or editing.
+    if (!this.state.busy && this.state.editing === null) {
+      this.refresh()
+    }
+  }
+
+  private onRefreshClicked = () => this.refresh()
 
   private applyDetails(details: IGitLabMergeRequestDetails) {
     if (this.mounted) {
@@ -661,6 +722,16 @@ export class GitLabMRDetail extends React.Component<
                 <Octicon symbol={octicons.pencil} /> Edit
               </Button>
             )}
+            <Button
+              size="small"
+              onClick={this.onRefreshClicked}
+              disabled={this.state.refreshing}
+              tooltip="Refresh"
+              ariaLabel="Refresh"
+              className={classNames({ 'gl-spinning': this.state.refreshing })}
+            >
+              <Octicon symbol={octicons.sync} />
+            </Button>
             <Button
               size="small"
               onClick={this.openURL(mr.webURL)}
