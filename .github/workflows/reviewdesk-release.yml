@@ -16,7 +16,7 @@ jobs:
   release:
     name: Build and publish
     # Apple Silicon, which is what the app is built for.
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       # Not 'production': that channel would need Apple signing, and would make
