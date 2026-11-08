@@ -66,9 +66,10 @@ export function describeGitLabError(body: unknown): string | null {
   return null
 }
 
-async function request(
+/** Call the GitLab API and return the parsed JSON body. */
+export async function request(
   connection: IGitLabConnection,
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   body?: Record<string, unknown>
 ): Promise<unknown> {
@@ -137,7 +138,7 @@ async function request(
 
 const projectRef = (projectPath: string) => encodeURIComponent(projectPath)
 
-function str(value: unknown): string | null {
+export function str(value: unknown): string | null {
   return typeof value === 'string' ? value : null
 }
 
@@ -184,7 +185,7 @@ export interface IGitLabNote {
   readonly system: boolean
 }
 
-function parseUser(value: unknown): IGitLabUserRef | null {
+export function parseUser(value: unknown): IGitLabUserRef | null {
   if (!isRecord(value) || typeof value.username !== 'string') {
     return null
   }
@@ -257,7 +258,7 @@ export function parseNote(value: unknown): IGitLabNote | null {
   }
 }
 
-function parseList<T>(
+export function parseList<T>(
   value: unknown,
   parse: (item: unknown) => T | null
 ): ReadonlyArray<T> {
@@ -274,7 +275,10 @@ function parseList<T>(
   return items
 }
 
-function parseOne<T>(value: unknown, parse: (item: unknown) => T | null): T {
+export function parseOne<T>(
+  value: unknown,
+  parse: (item: unknown) => T | null
+): T {
   const parsed = parse(value)
   if (parsed === null) {
     throw new GitLabAPIError(200, 'GitLab returned an unexpected response.')
@@ -310,16 +314,37 @@ export async function fetchBranchNames(
   )
 }
 
+export type GitLabMergeRequestState = 'opened' | 'merged' | 'closed' | 'all'
+
+/** Narrow a merge request list to the ones a user wrote or reviews. */
+export interface IGitLabMergeRequestFilter {
+  readonly authorUsername?: string
+  readonly reviewerUsername?: string
+}
+
 /** The project's merge requests in the given state, most recently updated first. */
 export async function fetchMergeRequests(
   connection: IGitLabConnection,
   projectId: number,
-  state: 'opened' | 'merged' | 'closed' | 'all' = 'opened'
+  state: GitLabMergeRequestState = 'opened',
+  filter: IGitLabMergeRequestFilter = {}
 ): Promise<ReadonlyArray<IGitLabMergeRequest>> {
+  const query = new URLSearchParams({
+    state,
+    order_by: 'updated_at',
+    sort: 'desc',
+    per_page: '50',
+  })
+  if (filter.authorUsername !== undefined) {
+    query.set('author_username', filter.authorUsername)
+  }
+  if (filter.reviewerUsername !== undefined) {
+    query.set('reviewer_username', filter.reviewerUsername)
+  }
   const body = await request(
     connection,
     'GET',
-    `/projects/${projectId}/merge_requests?state=${state}&order_by=updated_at&sort=desc&per_page=50`
+    `/projects/${projectId}/merge_requests?${query}`
   )
   return parseList(body, parseMergeRequest)
 }
@@ -333,6 +358,7 @@ export async function createMergeRequest(
     readonly targetBranch: string
     readonly title: string
     readonly description: string
+    readonly reviewerIds?: ReadonlyArray<number>
   }
 ): Promise<IGitLabMergeRequest> {
   const body = await request(
@@ -345,6 +371,9 @@ export async function createMergeRequest(
       title: options.title,
       description: options.description,
       remove_source_branch: false,
+      ...(options.reviewerIds !== undefined && options.reviewerIds.length > 0
+        ? { reviewer_ids: options.reviewerIds }
+        : {}),
     }
   )
   return parseOne(body, parseMergeRequest)
@@ -405,7 +434,7 @@ export interface IGitLabDiscussion {
   readonly resolved: boolean
 }
 
-function num(value: unknown): number | null {
+export function num(value: unknown): number | null {
   return typeof value === 'number' ? value : null
 }
 
@@ -649,4 +678,53 @@ export function getDiffExcerpt(
     text: l.text,
     commented: first + i >= start,
   }))
+}
+
+/** A row of a diff as the Changes tab shows it. */
+export type DiffDisplayRow =
+  | { readonly kind: 'hunk'; readonly text: string }
+  | {
+      readonly kind: 'add' | 'delete' | 'context'
+      readonly oldLine: number | null
+      readonly newLine: number | null
+      readonly text: string
+    }
+
+/** Split a unified diff into hunk headers and numbered lines. */
+export function parseDiffForDisplay(
+  diff: string
+): ReadonlyArray<DiffDisplayRow> {
+  const rows = new Array<DiffDisplayRow>()
+  let oldLine = 0
+  let newLine = 0
+  let started = false
+
+  for (const raw of diff.split('\n')) {
+    const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(raw)
+    if (header !== null) {
+      started = true
+      oldLine = parseInt(header[1], 10)
+      newLine = parseInt(header[2], 10)
+      rows.push({ kind: 'hunk', text: raw })
+      continue
+    }
+    if (!started) {
+      continue
+    }
+    const marker = raw.charAt(0)
+    const text = raw.slice(1)
+    if (marker === '+') {
+      rows.push({ kind: 'add', oldLine: null, newLine: newLine++, text })
+    } else if (marker === '-') {
+      rows.push({ kind: 'delete', oldLine: oldLine++, newLine: null, text })
+    } else if (marker === ' ') {
+      rows.push({
+        kind: 'context',
+        oldLine: oldLine++,
+        newLine: newLine++,
+        text,
+      })
+    }
+  }
+  return rows
 }
