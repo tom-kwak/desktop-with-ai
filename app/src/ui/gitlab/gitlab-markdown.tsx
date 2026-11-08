@@ -19,7 +19,6 @@ const NoEmoji = new Map<string, Emoji>()
 /** Sized for comments in a dialog rather than a full page. */
 const CommentCSS = `
   html, body, .markdown-body {
-    background-color: transparent;
     margin: 0;
     padding: 0;
   }
@@ -55,6 +54,34 @@ const CommentCSS = `
   .markdown-body img { max-width: 100%; }
 `
 
+/**
+ * The color actually painted behind `element`: the first ancestor with a
+ * non-transparent background. The sandboxed frame can't be see-through
+ * (Chromium paints it white), so it gets this color instead.
+ */
+function backgroundBehind(element: HTMLElement): string | null {
+  for (
+    let el: HTMLElement | null = element;
+    el !== null;
+    el = el.parentElement
+  ) {
+    const color = getComputedStyle(el).backgroundColor
+    if (
+      color !== '' &&
+      color !== 'transparent' &&
+      !/rgba\(.*,\s*0\)$/.test(color)
+    ) {
+      return color
+    }
+  }
+  return null
+}
+
+interface IGitLabMarkdownState {
+  /** CSS for the frame, set once the surrounding colors are known. */
+  readonly css: string | null
+}
+
 interface IGitLabMarkdownProps {
   readonly markdown: string
   /** Read by screen readers as the frame's name. */
@@ -66,9 +93,38 @@ interface IGitLabMarkdownProps {
  * sandbox. References like `!12`, `#3` and `@user` become links, and links
  * open in the browser.
  */
-export class GitLabMarkdown extends React.Component<IGitLabMarkdownProps> {
+export class GitLabMarkdown extends React.Component<
+  IGitLabMarkdownProps,
+  IGitLabMarkdownState
+> {
   public static contextType = GitLabMarkdownContext
   public declare context: React.ContextType<typeof GitLabMarkdownContext>
+
+  public state: IGitLabMarkdownState = { css: null }
+
+  private container: HTMLDivElement | null = null
+
+  public componentDidMount() {
+    // The frame only reads its CSS when it first renders, so wait for the
+    // colors of where it sits before rendering it.
+    const el = this.container
+    if (el === null) {
+      return
+    }
+    const background = backgroundBehind(el)
+    const color = getComputedStyle(el).color
+    this.setState({
+      css: `${CommentCSS}
+        html, body, .markdown-body {
+          ${background !== null ? `background-color: ${background};` : ''}
+          ${color !== '' ? `color: ${color};` : ''}
+        }`,
+    })
+  }
+
+  private onContainerRef = (el: HTMLDivElement | null) => {
+    this.container = el
+  }
 
   private onLinkClicked = (url: string) => {
     openExternal(url)
@@ -86,16 +142,18 @@ export class GitLabMarkdown extends React.Component<IGitLabMarkdownProps> {
           )
 
     return (
-      <div className="gl-markdown">
-        <SandboxedMarkdown
-          markdown={markdown}
-          baseHref={links === null ? undefined : `${links.projectURL}/`}
-          emoji={NoEmoji}
-          underlineLinks={true}
-          title={this.props.title}
-          customCSS={CommentCSS}
-          onMarkdownLinkClicked={this.onLinkClicked}
-        />
+      <div className="gl-markdown" ref={this.onContainerRef}>
+        {this.state.css !== null && (
+          <SandboxedMarkdown
+            markdown={markdown}
+            baseHref={links === null ? undefined : `${links.projectURL}/`}
+            emoji={NoEmoji}
+            underlineLinks={true}
+            title={this.props.title}
+            customCSS={this.state.css}
+            onMarkdownLinkClicked={this.onLinkClicked}
+          />
+        )}
       </div>
     )
   }

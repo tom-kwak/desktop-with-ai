@@ -66,6 +66,8 @@
 }
 
 body.theme-dark .gitlab-ui {
+  // Native controls (text boxes, selects, scrollbars) follow the theme.
+  color-scheme: dark;
   --gl-blue: #428fdc;
   --gl-blue-hover: #63a6e9;
   --gl-green: #2da160;
@@ -1161,8 +1163,9 @@ body.theme-dark .gitlab-ui {
     border: none;
     outline: none;
     resize: none;
-    background: var(--gl-bg);
+    background-color: var(--gl-bg);
     color: var(--gl-text);
+    caret-color: var(--gl-text);
     font-family: var(--font-family-sans-serif);
     font-size: 13px;
     line-height: 1.6;
